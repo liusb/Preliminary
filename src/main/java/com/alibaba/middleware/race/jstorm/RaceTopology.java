@@ -4,6 +4,7 @@ import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.tuple.Fields;
+import com.alibaba.middleware.race.PlatformType;
 import com.alibaba.middleware.race.RaceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,15 +29,23 @@ public class RaceTopology {
     public static void main(String[] args) throws Exception {
 
         Config conf = new Config();
-        int spout_Parallelism_hint = 1;
-        int split_Parallelism_hint = 2;
-        int count_Parallelism_hint = 2;
 
         TopologyBuilder builder = new TopologyBuilder();
+        builder.setSpout("payMessage", new PaymentMessageSpout(), 1);
+        builder.setSpout("tbMessage", new OrderMessageSpout(PlatformType.Taobao), 1);
+        builder.setSpout("tmMessage", new OrderMessageSpout(PlatformType.Tmall), 1);
 
-        builder.setSpout("spout", new RaceSentenceSpout(), spout_Parallelism_hint);
-        builder.setBolt("split", new SplitSentence(), split_Parallelism_hint).shuffleGrouping("spout");
-        builder.setBolt("count", new WordCount(), count_Parallelism_hint).fieldsGrouping("split", new Fields("word"));
+        builder.setBolt("tbAmount", new AmountCalculateBolt(PlatformType.Taobao), 1)
+                .fieldsGrouping("payMessage", new Fields("orderId"))
+                .fieldsGrouping("tbMessage", new Fields("orderId"));
+
+        builder.setBolt("tmAmount", new AmountCalculateBolt(PlatformType.Tmall), 1)
+                .fieldsGrouping("payMessage", new Fields("orderId"))
+                .fieldsGrouping("tmMessage", new Fields("orderId"));
+
+        builder.setBolt("ratio", new RatioCalculateBolt(), 1)
+                .shuffleGrouping("payMessage");
+
         String topologyName = RaceConfig.JstormTopologyName;
 
         try {

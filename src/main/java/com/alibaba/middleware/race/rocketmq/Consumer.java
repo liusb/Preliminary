@@ -24,7 +24,7 @@ import java.util.List;
 public class Consumer {
 
     public static void main(String[] args) throws InterruptedException, MQClientException {
-        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("please_rename_unique_group_name_4");
+        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer(RaceConfig.MqConsumerGroup);
 
         /**
          * 设置Consumer第一次启动是从队列头部开始消费还是队列尾部开始消费<br>
@@ -33,7 +33,7 @@ public class Consumer {
         consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);
 
         //在本地搭建好broker后,记得指定nameServer的地址
-        //consumer.setNamesrvAddr("127.0.0.1:9876");
+        consumer.setNamesrvAddr(RaceConfig.MqNamesrvAddr);
 
         consumer.subscribe(RaceConfig.MqPayTopic, "*");
 
