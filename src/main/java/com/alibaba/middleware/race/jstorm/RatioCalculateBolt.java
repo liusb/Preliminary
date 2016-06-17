@@ -8,97 +8,127 @@ import backtype.storm.tuple.Tuple;
 import com.alibaba.middleware.race.RaceConfig;
 import com.alibaba.middleware.race.RaceUtils;
 import com.alibaba.middleware.race.Tair.TairOperatorImpl;
+import com.alibaba.middleware.race.model.PaymentMessage;
+import com.alibaba.rocketmq.common.message.MessageExt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
 
 public class RatioCalculateBolt implements IRichBolt {
     private static Logger LOG = LoggerFactory.getLogger(RatioCalculateBolt.class);
 
-    OutputCollector _collector;
-    TairOperatorImpl _tairClient;
-    HashMap<Long, RatioSlot> _slots;
-    long _currentMinute;
-    RatioSlot _currentSlot;
+    protected OutputCollector collector;
+    protected transient TairOperatorImpl tairClient;
+    protected transient HashMap<Long, RatioSlot> slots;
+    protected transient long endUpdateMinute;
 
     class RatioSlot {
+        RatioSlot() {
+            pcAmount = 0;
+            wirelessAmount = 0;
+        }
         double pcAmount;
         double wirelessAmount;
     }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        try {
-            _collector = collector;
-            _tairClient = new TairOperatorImpl();
-            _slots = new HashMap<Long, RatioSlot>(20);
-            _currentMinute = RaceUtils.millisTosecondsOfMinute(System.currentTimeMillis());
-            _currentSlot = new RatioSlot();
-            _currentSlot.pcAmount = 0;
-            _currentSlot.wirelessAmount = 0;
-        }catch (Exception e) {
-            LOG.error("Bolt prepare failed " + e);
-        }
+        this.collector = collector;
+        tairClient = new TairOperatorImpl();
+        slots = new HashMap<Long, RatioSlot>();
+        endUpdateMinute = Long.MIN_VALUE;
     }
 
     @Override
     public void execute(Tuple tuple) {
         try {
-            double amount = tuple.getDouble(1);
-            short platform = tuple.getShort(2);
-            long minute = tuple.getLong(3);
-
-            if (amount == 0) {
-                double ratio = _currentSlot.wirelessAmount / _currentSlot.pcAmount;
-                _tairClient.write(RaceConfig.prex_ratio + _currentMinute, ratio);
-            } else if (minute == _currentMinute) {
-                if (platform == 0) {
-                    _currentSlot.pcAmount += amount;
-                } else {
-                    _currentSlot.wirelessAmount += amount;
+            MessageTuple messageTuple = (MessageTuple)tuple.getValue(0);
+            List<MessageExt> msgList = messageTuple.getMsgList();
+            HashMap<Long, RatioSlot> tupleSlots = new HashMap<Long, RatioSlot>();
+            long tupleBeginMinute = Long.MAX_VALUE;
+            long tupleEndMinute = Long.MIN_VALUE;
+            for (MessageExt msg : msgList) {
+                byte[] body = msg.getBody();
+                if (body.length == 2 && body[0] == 0 && body[1] == 0) {
+                    LOG.info("%%%%%%: Got the end signal");
+                    continue;
                 }
-            } else if (minute < _currentMinute) {
-                for (long i = minute; i < _currentMinute; i += 60) {
-                    if (!_slots.containsKey(i)) {
-                        //LOG.error("%%%%%%: ratio slots not contain key:" + i);
-                        continue;
+                PaymentMessage paymentMessage = RaceUtils.readKryoObject(PaymentMessage.class, body);
+                long minute = RaceUtils.millisToSecondsOfMinute(paymentMessage.getCreateTime());
+                double amount = paymentMessage.getPayAmount();
+                short platform = paymentMessage.getPayPlatform();
+                RatioSlot minuteSlot;
+                if (tupleSlots.containsKey(minute)) {
+                    minuteSlot = tupleSlots.get(minute);
+                } else {
+                    minuteSlot = new RatioSlot();
+                    if (minute < tupleBeginMinute) {
+                        tupleBeginMinute = minute;
                     }
-                    RatioSlot temp = _slots.get(i);
-                    if (platform == 0) {
-                        temp.pcAmount += amount;
-                    } else {
-                        temp.wirelessAmount += amount;
+                    if (minute > tupleEndMinute) {
+                        tupleEndMinute = minute;
                     }
-                    double ratio = temp.wirelessAmount / temp.pcAmount;
-                    _tairClient.write(RaceConfig.prex_ratio + i, ratio);
-                    _slots.put(i, temp);
                 }
                 if (platform == 0) {
-                    _currentSlot.pcAmount += amount;
+                    minuteSlot.pcAmount += amount;
                 } else {
-                    _currentSlot.wirelessAmount += amount;
+                    minuteSlot.wirelessAmount += amount;
                 }
-            } else {
-                double ratio = _currentSlot.wirelessAmount / _currentSlot.pcAmount;
-                _tairClient.write(RaceConfig.prex_ratio + _currentMinute, ratio);
-                _slots.put(_currentMinute, _currentSlot);
-                _currentMinute = minute;
-                if (platform == 0) {
-                    _currentSlot.pcAmount += amount;
-                } else {
-                    _currentSlot.wirelessAmount += amount;
+                tupleSlots.put(minute, minuteSlot);
+            }
+            if (endUpdateMinute == Long.MIN_VALUE) {
+                endUpdateMinute = tupleBeginMinute;
+            }else if (endUpdateMinute < tupleBeginMinute && endUpdateMinute+10*60>tupleBeginMinute) {
+                RatioSlot minuteSlot = slots.get(endUpdateMinute);
+                double ratio = minuteSlot.wirelessAmount/minuteSlot.pcAmount;
+                for (long key = endUpdateMinute+60; key <= tupleBeginMinute; key+=60) {
+                    tairClient.write(RaceConfig.prex_ratio + key, ratio);
+                    slots.put(key, minuteSlot);
                 }
             }
+            if (endUpdateMinute < tupleEndMinute) {
+                endUpdateMinute = tupleEndMinute;
+            }
+            if (endUpdateMinute-10*60>tupleBeginMinute) {
+                tupleBeginMinute = endUpdateMinute;
+            }
+            RatioSlot ratioSlot = new RatioSlot();
+            ratioSlot.pcAmount = 0;
+            ratioSlot.wirelessAmount = 0;
+            for (long key = tupleBeginMinute; key <= endUpdateMinute; key+=60) {
+                if (tupleSlots.containsKey(key)) {
+                    RatioSlot temp = tupleSlots.get(key);
+                    ratioSlot.pcAmount += temp.pcAmount;
+                    ratioSlot.wirelessAmount += temp.wirelessAmount;
+                }
+                RatioSlot minuteSlot;
+                if (slots.containsKey(key)) {
+                    minuteSlot = slots.get(key);
+                } else if (slots.containsKey(key-60)){
+                    minuteSlot = tupleSlots.get(key-60);
+                }else {
+                    minuteSlot = new RatioSlot();
+                }
+                minuteSlot.pcAmount += ratioSlot.pcAmount;
+                minuteSlot.wirelessAmount += ratioSlot.wirelessAmount;
+                double ratio = minuteSlot.wirelessAmount / minuteSlot.pcAmount;
+                tairClient.write(RaceConfig.prex_ratio + key, ratio);
+                slots.put(key, minuteSlot);
+            }
+            collector.ack(tuple);
         }catch (Exception e) {
+            collector.fail(tuple);
             LOG.error("Bolt execute failed " + e);
         }
     }
 
     @Override
     public void cleanup() {
-        _tairClient.close();
+        tairClient.close();
     }
 
     @Override

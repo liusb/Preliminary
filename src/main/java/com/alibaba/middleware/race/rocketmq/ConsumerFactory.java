@@ -33,7 +33,7 @@ public class ConsumerFactory {
 
         consumer.start();
 
-        LOG.info("%%%%%%: Consumer Started. Topic: " + topic);
+        LOG.info("%%%%%%: Consumer Started. Topic: " + topic + ". Name Server: " + consumer.getNamesrvAddr());
         _consumers.put(topic, consumer);
 
         return consumer;

@@ -3,8 +3,6 @@ package com.alibaba.middleware.race.jstorm;
 import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
-import backtype.storm.tuple.Fields;
-import com.alibaba.middleware.race.PlatformType;
 import com.alibaba.middleware.race.RaceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,27 +29,23 @@ public class RaceTopology {
         Config conf = new Config();
 
         TopologyBuilder builder = new TopologyBuilder();
-        builder.setSpout("payMessage", new PaymentMessageSpout(), 1);
-        builder.setSpout("tbMessage", new OrderMessageSpout(PlatformType.Taobao), 1);
-        builder.setSpout("tmMessage", new OrderMessageSpout(PlatformType.Tmall), 1);
+        builder.setSpout("payMessage", new MessageSpout(RaceConfig.MqPayTopic), 1);
+        builder.setSpout("tbMessage", new MessageSpout(RaceConfig.MqTaobaoTradeTopic), 1);
+        builder.setSpout("tmMessage", new MessageSpout(RaceConfig.MqTmallTradeTopic), 1);
 
-        builder.setBolt("tbAmount", new AmountCalculateBolt(PlatformType.Taobao), 1)
-                .fieldsGrouping("payMessage", new Fields("orderId"))
-                .fieldsGrouping("tbMessage", new Fields("orderId"));
+        builder.setBolt("tbAmount", new AmountCalculateBolt(RaceConfig.prex_taobao), 1)
+                .shuffleGrouping("payMessage").shuffleGrouping("tbMessage");
 
-        builder.setBolt("tmAmount", new AmountCalculateBolt(PlatformType.Tmall), 1)
-                .fieldsGrouping("payMessage", new Fields("orderId"))
-                .fieldsGrouping("tmMessage", new Fields("orderId"));
+        builder.setBolt("tmAmount", new AmountCalculateBolt(RaceConfig.prex_tmall), 1)
+                .shuffleGrouping("payMessage").shuffleGrouping("tmMessage");
 
         builder.setBolt("ratio", new RatioCalculateBolt(), 1)
                 .shuffleGrouping("payMessage");
 
-        String topologyName = RaceConfig.JstormTopologyName;
-
         try {
-            StormSubmitter.submitTopology(topologyName, conf, builder.createTopology());
+            StormSubmitter.submitTopology(RaceConfig.JstormTopologyName, conf, builder.createTopology());
         } catch (Exception e) {
-            // TODO Auto-generated catch block
+            LOG.error("Failed to submit the topology.");
             e.printStackTrace();
         }
     }

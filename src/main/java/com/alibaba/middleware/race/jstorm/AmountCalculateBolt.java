@@ -5,26 +5,32 @@ import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.IRichBolt;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.tuple.Tuple;
-import com.alibaba.jstorm.utils.TimeCacheMap;
-import com.alibaba.middleware.race.PlatformType;
-import com.alibaba.middleware.race.RaceConfig;
 import com.alibaba.middleware.race.RaceUtils;
 import com.alibaba.middleware.race.Tair.TairOperatorImpl;
+import com.alibaba.middleware.race.model.OrderMessage;
+import com.alibaba.middleware.race.model.PaymentMessage;
+import com.alibaba.rocketmq.common.message.MessageExt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.List;
+
 
 public class AmountCalculateBolt implements IRichBolt {
     private static Logger LOG = LoggerFactory.getLogger(AmountCalculateBolt.class);
 
-    OutputCollector _collector;
-    TairOperatorImpl _tairClient;
-    String _tairPrefix;
-    TimeCacheMap<Long, Double> _orderCache;
-    TimeCacheMap<Long, Payment> _paymentCache;
-    HashMap<Long, Double> _slots;
+    protected String tairPrefix;
+    protected OutputCollector collector;
+    protected TairOperatorImpl tairClient;
+    protected transient HashMap<Long, Double> orderCache;
+    protected transient HashMap<Long, Payment> paymentCache;
+    protected transient HashMap<Long, Double> slots;
+    protected transient HashMap<Long, Double> updateSlots;
+    protected transient Set<Long> updateKeys;
     double _currentAmount;
     long _currentMinute;
 
@@ -37,86 +43,109 @@ public class AmountCalculateBolt implements IRichBolt {
         }
     }
 
-    public AmountCalculateBolt(PlatformType platform) {
-        if (platform == PlatformType.Tmall) {
-            _tairPrefix = RaceConfig.prex_tmall;
-        }else {
-            _tairPrefix = RaceConfig.prex_taobao;
-        }
+    public AmountCalculateBolt(String prefix) {
+        tairPrefix = prefix;
     }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        try {
-            _collector = collector;
-            _tairClient = new TairOperatorImpl();
-            _orderCache = new TimeCacheMap<Long, Double>(10 * 60);
-            _paymentCache = new TimeCacheMap<Long, Payment>(60);
-            _slots = new HashMap<Long, Double>(20);
-            _currentAmount = 0;
-            _currentMinute = RaceUtils.millisTosecondsOfMinute(System.currentTimeMillis());
-        }catch (Exception e) {
-            LOG.error("Bolt prepare failed " + e);
-        }
+        this.collector = collector;
+        tairClient = new TairOperatorImpl();
+        orderCache = new HashMap<Long, Double>();
+        paymentCache = new HashMap<Long, Payment>();
+        slots = new HashMap<Long, Double>();
+        updateSlots = new HashMap<Long, Double>();
+        updateKeys = new HashSet<Long>();
+        _currentAmount = 0;
+        _currentMinute = RaceUtils.millisToSecondsOfMinute(System.currentTimeMillis());
     }
 
     private void processPayment(Payment payment) {
-        if (payment.createTime == _currentMinute) {
-            _currentAmount += payment.amount;
-        }else if (payment.createTime > _currentMinute) {
-            _tairClient.write(_tairPrefix + _currentMinute, _currentAmount);
-            _slots.put(_currentMinute, _currentAmount);
-            _currentMinute = payment.createTime;
-            _currentAmount = payment.amount;
+        long minute = RaceUtils.millisToSecondsOfMinute(payment.createTime);
+        updateKeys.add(minute);
+        if (updateSlots.containsKey(minute)) {
+            updateSlots.put(minute, updateSlots.get(minute) + payment.amount);
         }else {
-            double amount = payment.amount;
-            if (_slots.containsKey(payment.createTime)) {
-                amount += _slots.get(payment.createTime);
-            }
-            _tairClient.write(_tairPrefix + payment.createTime, amount);
-            _slots.put(payment.createTime, amount);
+            updateSlots.put(minute, payment.amount);
         }
     }
 
     @Override
     public void execute(Tuple tuple) {
         try {
+            updateKeys.clear();
+            updateSlots.clear();
+
             String source = tuple.getSourceComponent();
             if (source.startsWith("pay")) {
-                long orderId = tuple.getLong(0);
-                Payment payment = new Payment(tuple.getDouble(1), tuple.getLong(3));
-                if (_orderCache.containsKey(orderId)) {
-                    processPayment(payment);
-                    double orderAmount = _orderCache.get(orderId);
-                    if (orderAmount == payment.amount) {
-                        _orderCache.remove(orderId);
-                    } else if (orderAmount > payment.amount) {
-                        _orderCache.put(orderId, orderAmount - payment.amount);
-                    } else {
-                        LOG.error("%%%%%%: order amount not equal to payment amount, order_id: " + orderId);
+                MessageTuple messageTuple = (MessageTuple)tuple.getValue(0);
+                List<MessageExt> msgList = messageTuple.getMsgList();
+                for (MessageExt msg : msgList) {
+                    byte [] body = msg.getBody();
+                    if (body.length == 2 && body[0] == 0 && body[1] == 0) {
+                        LOG.info("%%%%%%: Got the end signal");
+                        continue;
                     }
-                } else {
-                    _paymentCache.put(orderId, payment);
+                    PaymentMessage paymentMessage = RaceUtils.readKryoObject(PaymentMessage.class, body);
+                    long orderId = paymentMessage.getOrderId();
+                    Payment payment = new Payment(paymentMessage.getPayAmount(), paymentMessage.getCreateTime());
+                    if (orderCache.containsKey(orderId)) {
+                        processPayment(payment);
+                        double orderAmount = orderCache.get(orderId);
+                        if ((orderAmount - payment.amount < 0.001) && (orderAmount - payment.amount > -0.001)) {
+                            orderCache.remove(orderId);
+                        } else if (orderAmount > payment.amount) {
+                            orderCache.put(orderId, orderAmount - payment.amount);
+                        } else {
+                            LOG.error("%%%%%%: order amount not equal to payment amount, order_id: " + orderId);
+                        }
+                    } else {
+                        paymentCache.put(orderId, payment);
+                    }
                 }
             } else {
-                long orderId = tuple.getLong(0);
-                double totalPrice = tuple.getDouble(1);
-                if (_paymentCache.containsKey(orderId)) {
-                    Payment payment = _paymentCache.get(orderId);
-                    processPayment(payment);
-                    _paymentCache.remove(orderId);
-                } else {
-                    _orderCache.put(orderId, totalPrice);
+                MessageTuple messageTuple = (MessageTuple)tuple.getValue(0);
+                List<MessageExt> msgList = messageTuple.getMsgList();
+                for (MessageExt msg : msgList) {
+                    byte[] body = msg.getBody();
+                    if (body.length == 2 && body[0] == 0 && body[1] == 0) {
+                        LOG.info("%%%%%%: Got the end signal");
+                        continue;
+                    }
+                    OrderMessage orderMessage = RaceUtils.readKryoObject(OrderMessage.class, body);
+                    long orderId = orderMessage.getOrderId();
+                    double totalPrice = orderMessage.getTotalPrice();
+                    if (paymentCache.containsKey(orderId)) {
+                        Payment payment = paymentCache.get(orderId);
+                        processPayment(payment);
+                        paymentCache.remove(orderId);
+                        if (totalPrice - payment.amount > 0.001) {
+                            orderCache.put(orderId, totalPrice - payment.amount);
+                        }
+                    } else {
+                        orderCache.put(orderId, totalPrice);
+                    }
                 }
             }
+
+            for (long key : updateKeys){
+                double amount = updateSlots.get(key);
+                if (slots.containsKey(key)) {
+                    amount += slots.get(key);
+                }
+                tairClient.write(tairPrefix + key, amount);
+                slots.put(key, amount);
+            }
+            collector.ack(tuple);
         }catch (Exception e) {
+            collector.fail(tuple);
             LOG.error("Bolt execute failed " + e);
         }
     }
 
     @Override
     public void cleanup() {
-       _tairClient.close();
+       tairClient.close();
     }
 
     @Override

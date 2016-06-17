@@ -31,7 +31,7 @@ public class RaceUtils {
         return ret;
     }
 
-    public static long millisTosecondsOfMinute(long milliseconds) {
+    public static long millisToSecondsOfMinute(long milliseconds) {
         return milliseconds/1000/60*60;
     }
 
