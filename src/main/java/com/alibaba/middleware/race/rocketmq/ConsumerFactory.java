@@ -7,34 +7,31 @@ import com.alibaba.rocketmq.common.consumer.ConsumeFromWhere;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
-
 
 public class ConsumerFactory {
     private static final Logger	LOG  = LoggerFactory.getLogger(ConsumerFactory.class);
 
-    public static Map<String, DefaultMQPushConsumer> _consumers =
-            new HashMap<String, DefaultMQPushConsumer>();
+    public static DefaultMQPushConsumer consumer = null;
 
-    public static synchronized DefaultMQPushConsumer mkInstance(String topic,
-                                                           MessageListenerConcurrently listener)  throws Exception {
-        DefaultMQPushConsumer consumer = _consumers.get(topic);
+    public static synchronized DefaultMQPushConsumer mkInstance(MessageListenerConcurrently listener)  throws Exception {
         if (consumer != null) {
-            LOG.error("%%%%%%: Consumer Already Started. Topic: " + topic);
-            return consumer;
+            LOG.error("%%%%%%: Consumer Already Started.");
+            return null;
         }
 
         consumer = new DefaultMQPushConsumer(RaceConfig.MqConsumerGroup);
         consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);
-        //consumer.setNamesrvAddr(RaceConfig.MqNamesrvAddr);
-        consumer.subscribe(topic, "*");
+
+        // consumer.setNamesrvAddr(RaceConfig.MqNamesrvAddr);
+
+        consumer.subscribe(RaceConfig.MqPayTopic, "*");
+        consumer.subscribe(RaceConfig.MqTaobaoTradeTopic, "*");
+        consumer.subscribe(RaceConfig.MqTmallTradeTopic, "*");
         consumer.registerMessageListener(listener);
 
         consumer.start();
 
-        LOG.info("%%%%%%: Consumer Started. Topic: " + topic);
-        _consumers.put(topic, consumer);
+        LOG.info("%%%%%%: Consumer Started.");
 
         return consumer;
     }

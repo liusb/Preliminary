@@ -4,7 +4,13 @@ package com.alibaba.middleware.race.jstorm;
 import backtype.storm.spout.SpoutOutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.IRichSpout;
+import backtype.storm.topology.OutputFieldsDeclarer;
+import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
+import com.alibaba.middleware.race.RaceConfig;
+import com.alibaba.middleware.race.RaceUtils;
+import com.alibaba.middleware.race.model.OrderMessage;
+import com.alibaba.middleware.race.model.PaymentMessage;
 import com.alibaba.middleware.race.rocketmq.ConsumerFactory;
 import com.alibaba.rocketmq.client.consumer.DefaultMQPushConsumer;
 import com.alibaba.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
@@ -18,48 +24,41 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingDeque;
 
-abstract public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
+public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
     private static final Logger LOG = LoggerFactory.getLogger(MessageSpout.class);
     protected SpoutOutputCollector collector;
-    protected String topic;
     protected transient DefaultMQPushConsumer mqConsumer;
     protected transient LinkedBlockingDeque<Values> sendingQueue;
-
-    public MessageSpout(String topic) {
-        this.topic = topic;
-    }
 
     @Override
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
         this.collector = collector;
-        sendingQueue = new LinkedBlockingDeque<Values>(20);
+        sendingQueue = new LinkedBlockingDeque<Values>(30);
         try {
-            mqConsumer = ConsumerFactory.mkInstance(topic, this);
+            mqConsumer = ConsumerFactory.mkInstance(this);
         } catch (Exception e) {
             LOG.error("%%%%%%: Failed to create RocketMq Consumer " + e);
-            throw new RuntimeException("Failed to create RocketMq Consumer" + topic, e);
+            throw new RuntimeException("Failed to create RocketMq Consumer.", e);
         }
-        LOG.info("%%%%%%: Message Spout open success. Topic:" + topic);
+        LOG.info("%%%%%%: Message Spout open success.");
     }
 
     @Override
     public void nextTuple() {
         Values message = null;
         try {
-            //LOG.info("%%%%%%: Wait for message in next Tuple:" + topic);
+            //LOG.info("%%%%%%: Wait for message in next Tuple:");
             message = sendingQueue.take();
         } catch (InterruptedException e) {
             LOG.info("Failed to blocking the nextTuple.");
         }
         if (message != null) {
-            // LOG.info("%%%%%%: Take succeed :" + topic);
+            // LOG.info("%%%%%%: Take succeed :");
             collector.emit(message);
         }else {
-            LOG.info("%%%%%%: Take failed :" + topic);
+            LOG.info("%%%%%%: Take failed :");
         }
     }
-
-    abstract public void putMessage(byte[] body);
 
     @Override
     public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgList, ConsumeConcurrentlyContext context) {
@@ -70,13 +69,48 @@ abstract public class MessageSpout implements IRichSpout, MessageListenerConcurr
                     LOG.info("%%%%%%: Got the end signal");
                     continue;
                 }
-                putMessage(body);
+                if(msg.getTopic().equals(RaceConfig.MqPayTopic)) {
+                    putPayMessage(body);
+                }else {
+                    putOrderMessage(body, msg.getTopic().equals(RaceConfig.MqTmallTradeTopic));
+                }
             }
             return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
         } catch (Exception e) {
             LOG.error("Failed to emit. ", e);
             return ConsumeConcurrentlyStatus.RECONSUME_LATER;
         }
+    }
+
+    public void putPayMessage(byte[] body) {
+        PaymentMessage paymentMessage = RaceUtils.readKryoObject(PaymentMessage.class, body);
+        while (true) {
+            try {
+                sendingQueue.put(new Values(paymentMessage.getOrderId(), paymentMessage.getPayAmount(),
+                        paymentMessage.getPayPlatform() == 0,
+                        RaceUtils.millisToSecondsOfMinute(paymentMessage.getCreateTime())));
+                break;
+            } catch (Exception e) {
+                LOG.info("Failed to blocking the putPayMessage.");
+            }
+        }
+    }
+
+    public void putOrderMessage(byte[] body, boolean platform) {
+        OrderMessage orderMessage = RaceUtils.readKryoObject(OrderMessage.class, body);
+        while (true) {
+            try {
+                sendingQueue.put(new Values(orderMessage.getOrderId(), orderMessage.getTotalPrice(), platform, 0L));
+                break;
+            } catch (Exception e) {
+                LOG.info("Failed to blocking the putPayMessage.");
+            }
+        }
+    }
+
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declare(new Fields("orderId", "amount", "platform", "minute"));
     }
 
     @Override

@@ -1,7 +1,6 @@
 package com.alibaba.middleware.race.Tair;
 
 import com.alibaba.middleware.race.RaceConfig;
-import com.alibaba.middleware.race.model.TableItemFactory;
 import com.taobao.tair.DataEntry;
 import com.taobao.tair.Result;
 import com.taobao.tair.ResultCode;
@@ -53,7 +52,7 @@ public class TairOperatorImpl {
     public boolean write(Serializable key, double value) {
         ResultCode rc = _tairManager.put(_namespace, key, round(value));
         if (rc.isSuccess()) {
-            LOG.info("%%%%%%: tair write:<" + key +", " + value + "> put success.");
+            //LOG.info("%%%%%%: tair write:(" + key +", " + value + ") put success.");
             return true;
         } else if (ResultCode.VERERROR.equals(rc)) {
             // 版本错误的处理代码
@@ -70,7 +69,7 @@ public class TairOperatorImpl {
         if (result.isSuccess()) {
             DataEntry entry = result.getValue();
             if(entry != null) {
-                LOG.info("%%%%%%: tair read success:<" + key + ", " + entry.getValue() + ">.");
+                LOG.info("%%%%%%: tair read success:(" + key + ", " + entry.getValue() + ").");
                 return entry.getValue();
             } else {
                 // 数据不存在

@@ -83,6 +83,9 @@ public class WriteResultBolt implements IRichBolt {
         }
         long pcAmount = 0;
         long wirelessAmount = 0;
+        if((endUpdateMinute-beginUpdateMinute) > 12*60*60) {
+            LOG.error("%%%%%%: " + beginUpdateMinute + " ====================> " + endUpdateMinute + " may have a bug.");
+        }
         for (long key = beginUpdateMinute; key <= endUpdateMinute; key+=60) {
             AmountSlot slot;
             if (slots.containsKey(key)) {

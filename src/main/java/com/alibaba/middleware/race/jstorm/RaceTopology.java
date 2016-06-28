@@ -30,14 +30,10 @@ public class RaceTopology {
         Config conf = new Config();
 
         TopologyBuilder builder = new TopologyBuilder();
-        builder.setSpout("payMessage", new PaymentMessageSpout(RaceConfig.MqPayTopic), 3);
-        builder.setSpout("tmMessage", new OrderMessageSpout(RaceConfig.MqTmallTradeTopic), 1);
-        builder.setSpout("tbMessage", new OrderMessageSpout(RaceConfig.MqTaobaoTradeTopic), 1);
+        builder.setSpout("message", new MessageSpout(), 1);
 
         builder.setBolt("messageJoin", new MessageJoinBolt(), 4)
-                .fieldsGrouping("payMessage", new Fields("orderId"))
-                .fieldsGrouping("tmMessage", new Fields("orderId"))
-                .fieldsGrouping("tbMessage", new Fields("orderId"));
+                .fieldsGrouping("message", new Fields("orderId"));
 
         builder.setBolt("aggregateBolt", new AggregateBolt(), 4)
                 .localFirstGrouping("messageJoin");

@@ -23,11 +23,14 @@ public class RaceConfig implements Serializable {
     public static String TairGroup = "group_tianchi";
     public static Integer TairNamespace = 34763;
 
-
-//    //这些是写tair key的前缀
-     public static String MqNamesrvAddr = "172.168.170.79:9876";
-      public static String MqProducerGroup = "RaceProducerGroup";
-
+    // 本地配置
 //    public static String TairConfigServer = "172.168.170.79:5198";
 //    public static String TairSalveConfigServer = null;
+//    public static String TairGroup = "group_1";
+//    public static Integer TairNamespace = 1;
+
+    // 生产者配置
+    public static String MqNamesrvAddr = "172.168.170.79:9876";
+    public static String MqProducerGroup = "RaceProducerGroup";
+
 }

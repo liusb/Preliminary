@@ -51,8 +51,7 @@ public class MessageJoinBolt implements IRichBolt {
     @Override
     public void execute(Tuple tuple) {
         try {
-            String source = tuple.getSourceComponent();
-            if (source.startsWith("pay")) {
+            if (tuple.getLong(3) != 0L) {
                 long orderId = tuple.getLong(0);
                 Payment payment = new Payment(tuple.getDouble(1), tuple.getBoolean(2), tuple.getLong(3));
                 if (orderCache.containsKey(orderId)) {
