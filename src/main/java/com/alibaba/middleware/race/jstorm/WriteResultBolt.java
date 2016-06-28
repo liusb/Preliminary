@@ -33,6 +33,7 @@ public class WriteResultBolt implements IRichBolt {
         this.collector = collector;
         tairClient = new TairOperatorImpl();
         slots = new HashMap<Long, AmountSlot>();
+        cacheSlots = new HashMap<Long, AmountSlot>();
         lastMinute = Long.MIN_VALUE;
         endUpdateMinute = Long.MIN_VALUE;
         beginUpdateMinute = Long.MAX_VALUE;
@@ -55,10 +56,10 @@ public class WriteResultBolt implements IRichBolt {
                         beginUpdateMinute = minute;
                     }
                 }
-                amountSlot.tmAmount += tuple.getLong(1);
-                amountSlot.tbAmount += tuple.getLong(2);
-                amountSlot.pcAmount += tuple.getLong(3);
-                amountSlot.wirelessAmount += tuple.getLong(4);
+                amountSlot.tmAmount += tuple.getDouble(1);
+                amountSlot.tbAmount += tuple.getDouble(2);
+                amountSlot.pcAmount += tuple.getDouble(3);
+                amountSlot.wirelessAmount += tuple.getDouble(4);
                 cacheSlots.put(minute, amountSlot);
             } else {
                 writeCache();
