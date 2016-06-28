@@ -25,15 +25,15 @@ public class ConsumerFactory {
             return consumer;
         }
 
-        consumer = new DefaultMQPushConsumer(RaceConfig.MqConsumerGroup + topic);
+        consumer = new DefaultMQPushConsumer(RaceConfig.MqConsumerGroup);
         consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);
-        consumer.setNamesrvAddr(RaceConfig.MqNamesrvAddr);
+        //consumer.setNamesrvAddr(RaceConfig.MqNamesrvAddr);
         consumer.subscribe(topic, "*");
         consumer.registerMessageListener(listener);
 
         consumer.start();
 
-        LOG.info("%%%%%%: Consumer Started. Topic: " + topic + ". Name Server: " + consumer.getNamesrvAddr());
+        LOG.info("%%%%%%: Consumer Started. Topic: " + topic);
         _consumers.put(topic, consumer);
 
         return consumer;

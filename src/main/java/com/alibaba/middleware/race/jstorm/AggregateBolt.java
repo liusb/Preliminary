@@ -53,7 +53,7 @@ public class AggregateBolt implements IRichBolt {
                 }
                 slots.put(minute, amountSlot);
             } else {
-                LOG.info("%%%%%%: Got tick tuple with slot size: " + slots.size());
+                // LOG.info("%%%%%%: Got tick tuple with slot size: " + slots.size());
                 for (Map.Entry<Long, AmountSlot> slot: slots.entrySet()) {
                     collector.emit(new Values(slot.getKey(), slot.getValue().tmAmount, slot.getValue().tbAmount,
                             slot.getValue().pcAmount, slot.getValue().wirelessAmount));

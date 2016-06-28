@@ -73,10 +73,10 @@
                         提交到jstorm集群的时候，记得加上provided的-->
             <scope>provided</scope>
             <exclusions>
-                <exclusion>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-javadoc-plugin</artifactId>
-                </exclusion>
+                <!--<exclusion>-->
+                    <!--<groupId>org.apache.maven.plugins</groupId>-->
+                    <!--<artifactId>maven-javadoc-plugin</artifactId>-->
+                <!--</exclusion>-->
 
                 <exclusion>
                     <groupId>org.slf4j</groupId>

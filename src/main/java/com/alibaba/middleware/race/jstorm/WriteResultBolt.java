@@ -72,7 +72,7 @@ public class WriteResultBolt implements IRichBolt {
     }
 
     private void writeCache() {
-        LOG.info("%%%%%%: Got tick tuple with cache slot size: " + cacheSlots.size());
+        //LOG.info("%%%%%%: Got tick tuple with cache slot size: " + cacheSlots.size());
         if (cacheSlots.isEmpty()) {
             return;
         }

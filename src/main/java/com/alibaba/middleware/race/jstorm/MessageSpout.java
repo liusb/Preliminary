@@ -46,13 +46,13 @@ abstract public class MessageSpout implements IRichSpout, MessageListenerConcurr
     public void nextTuple() {
         Values message = null;
         try {
-            LOG.info("%%%%%%: Wait for message in next Tuple:" + topic);
+            //LOG.info("%%%%%%: Wait for message in next Tuple:" + topic);
             message = sendingQueue.take();
         } catch (InterruptedException e) {
             LOG.info("Failed to blocking the nextTuple.");
         }
         if (message != null) {
-            LOG.info("%%%%%%: Take succeed :" + topic);
+            // LOG.info("%%%%%%: Take succeed :" + topic);
             collector.emit(message);
         }else {
             LOG.info("%%%%%%: Take failed :" + topic);
