@@ -7,8 +7,8 @@ import com.esotericsoftware.kryo.io.Output;
 
 public class RaceUtils {
     /**
-     * ÓÉÓÚÎÒÃÇÊÇ½«ÏûÏ¢½øĞĞKryoĞòÁĞ»¯ºó£¬¶Ñ»ıµ½RocketMq£¬ËùÓĞÑ¡ÊÖĞèÒª´ÓmetaQ»ñÈ¡ÏûÏ¢£¬
-     * ·´ĞòÁĞ³öÏûÏ¢Ä£ĞÍ£¬Ö»ÒªÏûÏ¢Ä£ĞÍµÄ¶¨ÒåÀàËÆÓÚOrderMessageºÍPaymentMessage¼´¿É
+     * ç”±äºæˆ‘ä»¬æ˜¯å°†æ¶ˆæ¯è¿›è¡ŒKryoåºåˆ—åŒ–åï¼Œå †ç§¯åˆ°RocketMqï¼Œæ‰€æœ‰é€‰æ‰‹éœ€è¦ä»metaQè·å–æ¶ˆæ¯ï¼Œ
+     * ååºåˆ—å‡ºæ¶ˆæ¯æ¨¡å‹ï¼Œåªè¦æ¶ˆæ¯æ¨¡å‹çš„å®šä¹‰ç±»ä¼¼äºOrderMessageå’ŒPaymentMessageå³å¯
      * @param object
      * @return
      */

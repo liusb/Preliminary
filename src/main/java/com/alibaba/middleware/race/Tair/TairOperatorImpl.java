@@ -1,6 +1,7 @@
 package com.alibaba.middleware.race.Tair;
 
 import com.alibaba.middleware.race.RaceConfig;
+import com.alibaba.middleware.race.model.TableItemFactory;
 import com.taobao.tair.DataEntry;
 import com.taobao.tair.Result;
 import com.taobao.tair.ResultCode;
@@ -14,8 +15,8 @@ import java.util.List;
 
 
 /**
- * ¶ÁĞ´tairËùĞèÒªµÄ¼¯ÈºĞÅÏ¢£¬ÈçmasterConfigServer/slaveConfigServerµØÖ·/
- * group ¡¢namespaceÎÒÃÇ¶¼»áÔÚÕıÊ½Ìá½»´úÂëÇ°¸æÖªÑ¡ÊÖ
+ * è¯»å†™tairæ‰€éœ€è¦çš„é›†ç¾¤ä¿¡æ¯ï¼Œå¦‚masterConfigServer/slaveConfigServeråœ°å€/
+ * group ã€namespaceæˆ‘ä»¬éƒ½ä¼šåœ¨æ­£å¼æäº¤ä»£ç å‰å‘ŠçŸ¥é€‰æ‰‹
  */
 public class TairOperatorImpl {
     private static Logger LOG = LoggerFactory.getLogger(TairOperatorImpl.class);
@@ -44,16 +45,21 @@ public class TairOperatorImpl {
                 RaceConfig.TairGroup, RaceConfig.TairNamespace);
     }
 
-    public boolean write(Serializable key, Serializable value) {
-        ResultCode rc = _tairManager.put(_namespace, key, value);
+    private static double round(double value) {
+        long tmp = Math.round(value * 100);
+        return (double) tmp / 100;
+    }
+
+    public boolean write(Serializable key, double value) {
+        ResultCode rc = _tairManager.put(_namespace, key, round(value));
         if (rc.isSuccess()) {
             LOG.info("%%%%%%: tair write:<" + key +", " + value + "> put success.");
             return true;
         } else if (ResultCode.VERERROR.equals(rc)) {
-            // °æ±¾´íÎóµÄ´¦Àí´úÂë
+            // ç‰ˆæœ¬é”™è¯¯çš„å¤„ç†ä»£ç 
             LOG.error("%%%%%%: tair write error: " + rc.getCode() +", " + rc.getMessage());
         } else {
-            // ÆäËûÊ§°ÜµÄ´¦Àí´úÂë
+            // å…¶ä»–å¤±è´¥çš„å¤„ç†ä»£ç 
             LOG.error("%%%%%%: tair write error: " + rc.getCode() +", " + rc.getMessage());
         }
         return false;
@@ -67,11 +73,11 @@ public class TairOperatorImpl {
                 LOG.info("%%%%%%: tair read success:<" + key + ", " + entry.getValue() + ">.");
                 return entry.getValue();
             } else {
-                // Êı¾İ²»´æÔÚ
+                // æ•°æ®ä¸å­˜åœ¨
                 LOG.error("%%%%%%: tair read error: key " + key + " not exists.");
             }
         } else {
-            // Òì³£´¦Àí
+            // å¼‚å¸¸å¤„ç†
             LOG.error("%%%%%%: tair read error: ", result.getRc().getCode() + ", " + result.getRc().getMessage());
         }
         return null;
@@ -92,17 +98,17 @@ public class TairOperatorImpl {
         _tairManager.close();
     }
 
-    // ÌìÃ¨µÄ·ÖÖÓ½»Ò×¶îĞ´Èëtair
+    // å¤©çŒ«çš„åˆ†é’Ÿäº¤æ˜“é¢å†™å…¥tair
     public static void testTair(String [] args) throws Exception {
         TairOperatorImpl tairOperator = new TairOperatorImpl(RaceConfig.TairConfigServer,
                 RaceConfig.TairSalveConfigServer, RaceConfig.TairGroup, RaceConfig.TairNamespace);
-        //¼ÙÉèÕâÊÇ¸¶¿îÊ±¼ä
+        //å‡è®¾è¿™æ˜¯ä»˜æ¬¾æ—¶é—´
         Long millisTime = System.currentTimeMillis();
-        //ÓÉÓÚÕû·ÖÊ±¼ä´ÁÊÇ10Î»Êı£¬ËùÒÔĞèÒª×ª»»³ÉÕû·ÖÊ±¼ä´Á
+        //ç”±äºæ•´åˆ†æ—¶é—´æˆ³æ˜¯10ä½æ•°ï¼Œæ‰€ä»¥éœ€è¦è½¬æ¢æˆæ•´åˆ†æ—¶é—´æˆ³
         Long minuteTime = (millisTime / 1000 / 60) * 60;
-        //¼ÙÉèÕâÒ»·ÖÖÓµÄ½»Ò×¶îÊÇ100;
+        //å‡è®¾è¿™ä¸€åˆ†é’Ÿçš„äº¤æ˜“é¢æ˜¯100;
         Double money = 100.0;
-        //Ğ´Èëtair
+        //å†™å…¥tair
         tairOperator.write(RaceConfig.prex_tmall + minuteTime, money);
         System.out.println("write over!!!!!!!!!");
 

@@ -3,21 +3,22 @@ package com.alibaba.middleware.race.jstorm;
 import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
+import backtype.storm.tuple.Fields;
 import com.alibaba.middleware.race.RaceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
 /**
- * ÕâÊÇÒ»¸öºÜ¼òµ¥µÄÀı×Ó
- * Ñ¡ÊÖµÄÍØÆËÌá½»µ½¼¯Èº£¬ÎÒÃÇÊÇÓĞ³¬Ê±ÉèÖÃµÄ¡£Ã¿¸öÑ¡ÊÖµÄÍØÆË×î¶àÅÜ20·ÖÖÓ£¬Ò»µ©³¬¹ıÕâ¸öÊ±¼ä
- * ÎÒÃÇ»á½«Ñ¡ÊÖÍØÆËÉ±µô¡£
+ * è¿™æ˜¯ä¸€ä¸ªå¾ˆç®€å•çš„ä¾‹å­
+ * é€‰æ‰‹çš„æ‹“æ‰‘æäº¤åˆ°é›†ç¾¤ï¼Œæˆ‘ä»¬æ˜¯æœ‰è¶…æ—¶è®¾ç½®çš„ã€‚æ¯ä¸ªé€‰æ‰‹çš„æ‹“æ‰‘æœ€å¤šè·‘20åˆ†é’Ÿï¼Œä¸€æ—¦è¶…è¿‡è¿™ä¸ªæ—¶é—´
+ * æˆ‘ä»¬ä¼šå°†é€‰æ‰‹æ‹“æ‰‘æ€æ‰ã€‚
  */
 
 /**
- * Ñ¡ÊÖÍØÆËÈë¿ÚÀà£¬ÎÒÃÇ¶¨Òå±ØĞëÊÇcom.alibaba.middleware.race.jstorm.RaceTopology
- * ÒòÎªÎÒÃÇºóÌ¨¶ÔÑ¡ÊÖµÄgit½øĞĞÏÂÔØ´ò°ü£¬ÍØÆËÔËĞĞµÄÈë¿ÚÀàÄ¬ÈÏÊÇcom.alibaba.middleware.race.jstorm.RaceTopology£»
- * ËùÒÔÕâ¸öÖ÷ÀàÂ·¾¶Ò»¶¨ÒªÕıÈ·
+ * é€‰æ‰‹æ‹“æ‰‘å…¥å£ç±»ï¼Œæˆ‘ä»¬å®šä¹‰å¿…é¡»æ˜¯com.alibaba.middleware.race.jstorm.RaceTopology
+ * å› ä¸ºæˆ‘ä»¬åå°å¯¹é€‰æ‰‹çš„gitè¿›è¡Œä¸‹è½½æ‰“åŒ…ï¼Œæ‹“æ‰‘è¿è¡Œçš„å…¥å£ç±»é»˜è®¤æ˜¯com.alibaba.middleware.race.jstorm.RaceTopologyï¼›
+ * æ‰€ä»¥è¿™ä¸ªä¸»ç±»è·¯å¾„ä¸€å®šè¦æ­£ç¡®
  */
 public class RaceTopology {
 
@@ -29,18 +30,20 @@ public class RaceTopology {
         Config conf = new Config();
 
         TopologyBuilder builder = new TopologyBuilder();
-        builder.setSpout("payMessage", new MessageSpout(RaceConfig.MqPayTopic), 1);
-        builder.setSpout("tbMessage", new MessageSpout(RaceConfig.MqTaobaoTradeTopic), 1);
-        builder.setSpout("tmMessage", new MessageSpout(RaceConfig.MqTmallTradeTopic), 1);
+        builder.setSpout("payMessage", new PaymentMessageSpout(RaceConfig.MqPayTopic), 3);
+        builder.setSpout("tmMessage", new OrderMessageSpout(RaceConfig.MqTmallTradeTopic), 1);
+        builder.setSpout("tbMessage", new OrderMessageSpout(RaceConfig.MqTaobaoTradeTopic), 1);
 
-        builder.setBolt("tbAmount", new AmountCalculateBolt(RaceConfig.prex_taobao), 1)
-                .shuffleGrouping("payMessage").shuffleGrouping("tbMessage");
+        builder.setBolt("messageJoin", new MessageJoinBolt(), 4)
+                .fieldsGrouping("payMessage", new Fields("orderId"))
+                .fieldsGrouping("tmMessage", new Fields("orderId"))
+                .fieldsGrouping("tbMessage", new Fields("orderId"));
 
-        builder.setBolt("tmAmount", new AmountCalculateBolt(RaceConfig.prex_tmall), 1)
-                .shuffleGrouping("payMessage").shuffleGrouping("tmMessage");
+        builder.setBolt("aggregateBolt", new AggregateBolt(), 4)
+                .localFirstGrouping("messageJoin");
 
-        builder.setBolt("ratio", new RatioCalculateBolt(), 1)
-                .shuffleGrouping("payMessage");
+        builder.setBolt("writeBolt", new WriteResultBolt(), 1)
+                .globalGrouping("aggregateBolt");
 
         try {
             StormSubmitter.submitTopology(RaceConfig.JstormTopologyName, conf, builder.createTopology());
