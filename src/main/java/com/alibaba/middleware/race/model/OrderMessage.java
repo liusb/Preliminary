@@ -3,22 +3,22 @@ package com.alibaba.middleware.race.model;
 import java.io.Serializable;
 
 /**
- * ÎÒÃÇºóÌ¨RocketMq´æ´¢µÄ¶©µ¥ÏûÏ¢Ä£ĞÍÀàËÆÓÚOrderMessage£¬Ñ¡ÊÖÒ²¿ÉÒÔ×Ô¶¨Òå
- * ¶©µ¥ÏûÏ¢Ä£ĞÍ£¬Ö»ÒªÄ£ĞÍÖĞ¸÷¸ö×Ö¶ÎµÄÀàĞÍºÍË³ĞòºÍOrderMessageÒ»Ñù£¬¼´¿ÉÓÃKryo
- * ·´ĞòÁĞ³öÏûÏ¢
+ * æˆ‘ä»¬åå°RocketMqå­˜å‚¨çš„è®¢å•æ¶ˆæ¯æ¨¡å‹ç±»ä¼¼äºOrderMessageï¼Œé€‰æ‰‹ä¹Ÿå¯ä»¥è‡ªå®šä¹‰
+ * è®¢å•æ¶ˆæ¯æ¨¡å‹ï¼Œåªè¦æ¨¡å‹ä¸­å„ä¸ªå­—æ®µçš„ç±»å‹å’Œé¡ºåºå’ŒOrderMessageä¸€æ ·ï¼Œå³å¯ç”¨Kryo
+ * ååºåˆ—å‡ºæ¶ˆæ¯
  */
 public class OrderMessage implements Serializable{
     private static final long serialVersionUID = -4082657304129211564L;
-    private long orderId; //¶©µ¥ID
-    private String buyerId; //Âò¼ÒID
-    private String productId; //ÉÌÆ·ID
+    private long orderId; //è®¢å•ID
+    private String buyerId; //ä¹°å®¶ID
+    private String productId; //å•†å“ID
 
-    private String salerId; //Âô¼ÒID
-    private long createTime; //13Î»ÊıÊı£¬ºÁÃë¼¶Ê±¼ä´Á£¬¶©µ¥´´½¨Ê±¼ä
+    private String salerId; //å–å®¶ID
+    private long createTime; //13ä½æ•°æ•°ï¼Œæ¯«ç§’çº§æ—¶é—´æˆ³ï¼Œè®¢å•åˆ›å»ºæ—¶é—´
     private double totalPrice;
 
 
-    //KryoÄ¬ÈÏĞèÒªÎŞ²ÎÊı¹¹Ôìº¯Êı
+    //Kryoé»˜è®¤éœ€è¦æ— å‚æ•°æ„é€ å‡½æ•°
     private OrderMessage() {
 
     }

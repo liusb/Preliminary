@@ -11,21 +11,23 @@ import com.alibaba.middleware.race.model.*;
 import com.alibaba.middleware.race.RaceUtils;
 
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Semaphore;
 
 
 /**
- * Producer£¬·¢ËÍÏûÏ¢
+ * Producerï¼Œå‘é€æ¶ˆæ¯
  */
 public class Producer {
 
     private static Random rand = new Random();
-    private static int count = 1000;
+    private static int count = 5000;
 
     /**
-     * ÕâÊÇÒ»¸öÄ£Äâ¶Ñ»ıÏûÏ¢µÄ³ÌĞò£¬Éú³ÉµÄÏûÏ¢Ä£ĞÍºÍÎÒÃÇ±ÈÈüµÄÏûÏ¢Ä£ĞÍÊÇÒ»ÑùµÄ£¬
-     * ËùÒÔÑ¡ÊÖ¿ÉÒÔÀûÓÃÕâ¸ö³ÌĞòÉú³ÉÊı¾İ£¬×öÏßÏÂµÄ²âÊÔ¡£
+     * è¿™æ˜¯ä¸€ä¸ªæ¨¡æ‹Ÿå †ç§¯æ¶ˆæ¯çš„ç¨‹åºï¼Œç”Ÿæˆçš„æ¶ˆæ¯æ¨¡å‹å’Œæˆ‘ä»¬æ¯”èµ›çš„æ¶ˆæ¯æ¨¡å‹æ˜¯ä¸€æ ·çš„ï¼Œ
+     * æ‰€ä»¥é€‰æ‰‹å¯ä»¥åˆ©ç”¨è¿™ä¸ªç¨‹åºç”Ÿæˆæ•°æ®ï¼Œåšçº¿ä¸‹çš„æµ‹è¯•ã€‚
      * @param args
      * @throws MQClientException
      * @throws InterruptedException
@@ -33,8 +35,10 @@ public class Producer {
     public static void main(String[] args) throws MQClientException, InterruptedException {
         DefaultMQProducer producer = new DefaultMQProducer(RaceConfig.MqProducerGroup);
 
-        //ÔÚ±¾µØ´î½¨ºÃbrokerºó,¼ÇµÃÖ¸¶¨nameServerµÄµØÖ·
+        //åœ¨æœ¬åœ°æ­å»ºå¥½brokerå,è®°å¾—æŒ‡å®šnameServerçš„åœ°å€
         producer.setNamesrvAddr(RaceConfig.MqNamesrvAddr);
+
+        HashMap<Long, AmountSlot> slots = new HashMap<Long, AmountSlot>();
 
         producer.start();
 
@@ -53,7 +57,7 @@ public class Producer {
 
                 producer.send(msgToBroker, new SendCallback() {
                     public void onSuccess(SendResult sendResult) {
-                        System.out.println(orderMessage);
+                        //System.out.println(orderMessage);
                         semaphore.release();
                     }
                     public void onException(Throwable throwable) {
@@ -75,7 +79,7 @@ public class Producer {
                         final Message messageToBroker = new Message(RaceConfig.MqPayTopic, RaceUtils.writeKryoObject(paymentMessage));
                         producer.send(messageToBroker, new SendCallback() {
                             public void onSuccess(SendResult sendResult) {
-                                System.out.println(paymentMessage);
+                                // System.out.println(paymentMessage);
                             }
                             public void onException(Throwable throwable) {
                                 throwable.printStackTrace();
@@ -84,13 +88,34 @@ public class Producer {
                     }else {
                         //
                     }
+
+                    // ç»Ÿè®¡ç”Ÿæˆçš„æ•°æ®
+                    long minute = RaceUtils.millisToSecondsOfMinute(paymentMessage.getCreateTime());
+                    AmountSlot slot;
+                    if (slots.containsKey(minute)) {
+                        slot = slots.get(minute);
+                    } else {
+                        slot = new AmountSlot();
+                    }
+                    if (paymentMessage.getPayPlatform()==0) {
+                        slot.pcAmount += paymentMessage.getPayAmount();
+                    } else {
+                        slot.wirelessAmount += paymentMessage.getPayAmount();
+                    }
+                    if (platform == 0) {
+                        slot.tbAmount += paymentMessage.getPayAmount();
+                    } else {
+                        slot.tmAmount += paymentMessage.getPayAmount();
+                    }
+                    slots.put(minute, slot);
+
                 }
 
                 if (Double.compare(amount, orderMessage.getTotalPrice()) != 0) {
                     throw new RuntimeException("totalprice is not equal.");
                 }
 
-
+                Thread.sleep(100);
             } catch (Exception e) {
                 e.printStackTrace();
                 Thread.sleep(1000);
@@ -99,7 +124,7 @@ public class Producer {
 
         semaphore.acquire(count);
 
-        //ÓÃÒ»¸öshort±êÊ¶Éú²úÕßÍ£Ö¹Éú²úÊı¾İ
+        //ç”¨ä¸€ä¸ªshortæ ‡è¯†ç”Ÿäº§è€…åœæ­¢ç”Ÿäº§æ•°æ®
         byte [] zero = new  byte[]{0,0};
         Message endMsgTB = new Message(RaceConfig.MqTaobaoTradeTopic, zero);
         Message endMsgTM = new Message(RaceConfig.MqTmallTradeTopic, zero);
@@ -113,5 +138,10 @@ public class Producer {
             e.printStackTrace();
         }
         producer.shutdown();
+
+        // æ‰“å°ç»Ÿè®¡ä¿¡æ¯
+        for(Map.Entry entry: slots.entrySet()) {
+            System.out.println("minute: " + entry.getKey() + entry.getValue());
+        }
     }
 }

@@ -5,41 +5,41 @@ import java.util.Random;
 
 
 /**
- * ÎÒÃÇºóÌ¨RocketMq´æ´¢µÄ½»Ò×ÏûÏ¢Ä£ĞÍÀàËÆÓÚPaymentMessage£¬Ñ¡ÊÖÒ²¿ÉÒÔ×Ô¶¨Òå
- * ¶©µ¥ÏûÏ¢Ä£ĞÍ£¬Ö»ÒªÄ£ĞÍÖĞ¸÷¸ö×Ö¶ÎµÄÀàĞÍºÍË³ĞòºÍPaymentMessageÒ»Ñù£¬¼´¿ÉÓÃKryo
- * ·´ĞòÁĞ³öÏûÏ¢
+ * æˆ‘ä»¬åå°RocketMqå­˜å‚¨çš„äº¤æ˜“æ¶ˆæ¯æ¨¡å‹ç±»ä¼¼äºPaymentMessageï¼Œé€‰æ‰‹ä¹Ÿå¯ä»¥è‡ªå®šä¹‰
+ * è®¢å•æ¶ˆæ¯æ¨¡å‹ï¼Œåªè¦æ¨¡å‹ä¸­å„ä¸ªå­—æ®µçš„ç±»å‹å’Œé¡ºåºå’ŒPaymentMessageä¸€æ ·ï¼Œå³å¯ç”¨Kryo
+ * ååºåˆ—å‡ºæ¶ˆæ¯
  */
 
 public class PaymentMessage implements Serializable{
 
     private static final long serialVersionUID = -4721410670774102273L;
 
-    private long orderId; //¶©µ¥ID
+    private long orderId; //è®¢å•ID
 
-    private double payAmount; //½ğ¶î
-
-    /**
-     * MoneyÀ´Ô´
-     * 0,Ö§¸¶±¦
-     * 1,ºì°ü»ò´ú½ğÈ¯
-     * 2,ÒøÁª
-     * 3,ÆäËû
-     */
-    private short paySource; //À´Ô´
+    private double payAmount; //é‡‘é¢
 
     /**
-     * Ö§¸¶Æ½Ì¨
-     * 0£¬pC
-     * 1£¬ÎŞÏß
+     * Moneyæ¥æº
+     * 0,æ”¯ä»˜å®
+     * 1,çº¢åŒ…æˆ–ä»£é‡‘åˆ¸
+     * 2,é“¶è”
+     * 3,å…¶ä»–
      */
-    private short payPlatform; //Ö§¸¶Æ½Ì¨
+    private short paySource; //æ¥æº
 
     /**
-     * ¸¶¿î¼ÇÂ¼´´½¨Ê±¼ä
+     * æ”¯ä»˜å¹³å°
+     * 0ï¼ŒpC
+     * 1ï¼Œæ— çº¿
      */
-    private long createTime; //13Î»Êı£¬ºÁÃë¼¶Ê±¼ä´Á£¬³õÈüÒªÇóµÄÊ±¼ä¶¼ÊÇÖ¸¸ÃÊ±¼ä
+    private short payPlatform; //æ”¯ä»˜å¹³å°
 
-    //KryoÄ¬ÈÏĞèÒªÎŞ²ÎÊı¹¹Ôìº¯Êı
+    /**
+     * ä»˜æ¬¾è®°å½•åˆ›å»ºæ—¶é—´
+     */
+    private long createTime; //13ä½æ•°ï¼Œæ¯«ç§’çº§æ—¶é—´æˆ³ï¼Œåˆèµ›è¦æ±‚çš„æ—¶é—´éƒ½æ˜¯æŒ‡è¯¥æ—¶é—´
+
+    //Kryoé»˜è®¤éœ€è¦æ— å‚æ•°æ„é€ å‡½æ•°
     public PaymentMessage() {
     }
 

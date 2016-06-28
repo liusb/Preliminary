@@ -4,13 +4,13 @@ import java.io.Serializable;
 
 public class RaceConfig implements Serializable {
 
-    //这些是写tair key的前缀
+    //杩欎簺鏄啓tair key鐨勫墠缂�
     public static String prex_tmall = "platformTmall_";
     public static String prex_taobao = "platformTaobao_";
     public static String prex_ratio = "ratio_";
 
 
-    //这些jstorm/rocketMq/tair 的集群配置信息，这些配置信息在正式提交代码前会被公布
+    //杩欎簺jstorm/rocketMq/tair 鐨勯泦缇ら厤缃俊鎭紝杩欎簺閰嶇疆淇℃伅鍦ㄦ寮忔彁浜や唬鐮佸墠浼氳鍏竷
     public static String JstormTopologyName = "Preliminary";
 
     public static String MqNamesrvAddr = "172.168.170.79:9876";
