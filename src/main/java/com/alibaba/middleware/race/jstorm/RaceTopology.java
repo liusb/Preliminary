@@ -29,7 +29,7 @@ public class RaceTopology {
 
         Config conf = new Config();
 //        conf.put(Config.TOPOLOGY_WORKERS, 3);  // 三个worker
-        Config.setNumAckers(conf, 0);
+//        Config.setNumAckers(conf, 0);
 
         TopologyBuilder builder = new TopologyBuilder();
         builder.setSpout("message", new MessageSpout(), 3);
