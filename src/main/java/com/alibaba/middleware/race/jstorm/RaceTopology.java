@@ -28,9 +28,11 @@ public class RaceTopology {
     public static void main(String[] args) throws Exception {
 
         Config conf = new Config();
+//        conf.put(Config.TOPOLOGY_WORKERS, 3);  // 三个worker
+        Config.setNumAckers(conf, 0);
 
         TopologyBuilder builder = new TopologyBuilder();
-        builder.setSpout("message", new MessageSpout(), 1);
+        builder.setSpout("message", new MessageSpout(), 3);
 
         builder.setBolt("messageJoin", new MessageJoinBolt(), 4)
                 .fieldsGrouping("message", new Fields("orderId"));

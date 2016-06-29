@@ -24,7 +24,8 @@ public class WriteResultBolt implements IRichBolt {
     protected transient TairOperatorImpl tairClient;
     protected transient HashMap<Long, AmountSlot> slots;
     protected transient HashMap<Long, AmountSlot> cacheSlots;
-    protected transient long lastMinute;
+    protected transient long baseBeginMinute;
+    protected transient long baseEndMinute;
     protected transient long endUpdateMinute;
     protected transient long beginUpdateMinute;
 
@@ -34,9 +35,10 @@ public class WriteResultBolt implements IRichBolt {
         tairClient = new TairOperatorImpl();
         slots = new HashMap<Long, AmountSlot>();
         cacheSlots = new HashMap<Long, AmountSlot>();
-        lastMinute = Long.MIN_VALUE;
-        endUpdateMinute = Long.MIN_VALUE;
+        baseBeginMinute = Long.MAX_VALUE;
+        baseEndMinute = Long.MIN_VALUE;
         beginUpdateMinute = Long.MAX_VALUE;
+        endUpdateMinute = Long.MIN_VALUE;
     }
 
     @Override
@@ -71,33 +73,44 @@ public class WriteResultBolt implements IRichBolt {
         }
     }
 
+    private void fillSlot(long begin, long end) {
+        for(long key = begin; key <= end; key+=60) {
+            AmountSlot slot = new AmountSlot();
+            if (slots.containsKey(key-60)) {
+                AmountSlot lastSlot = slots.get(key-60);
+                slot.pcAmount = lastSlot.pcAmount;
+                slot.wirelessAmount = lastSlot.wirelessAmount;
+            }
+            slots.put(key, slot);
+        }
+    }
+
     private void writeCache() {
         //LOG.info("%%%%%%: Got tick tuple with cache slot size: " + cacheSlots.size());
         if (cacheSlots.isEmpty()) {
             return;
         }
-        if(lastMinute == Long.MIN_VALUE) {
-            lastMinute = beginUpdateMinute - 60;
-        }else if(beginUpdateMinute > lastMinute) {
-            beginUpdateMinute = lastMinute + 60;
+        if(baseBeginMinute <= baseEndMinute) {
+            if(beginUpdateMinute < baseBeginMinute) {
+                fillSlot(beginUpdateMinute, baseBeginMinute-60);
+                baseBeginMinute = beginUpdateMinute;
+            }
+            if(endUpdateMinute > baseEndMinute) {
+                fillSlot(baseEndMinute + 60, endUpdateMinute);
+                baseEndMinute = endUpdateMinute;
+            }
+        }else {
+            fillSlot(beginUpdateMinute, endUpdateMinute);
+            baseBeginMinute = beginUpdateMinute;
+            baseEndMinute = endUpdateMinute;
         }
         long pcAmount = 0;
         long wirelessAmount = 0;
         if((endUpdateMinute-beginUpdateMinute) > 12*60*60) {
             LOG.error("%%%%%%: " + beginUpdateMinute + " ====================> " + endUpdateMinute + " may have a bug.");
         }
-        for (long key = beginUpdateMinute; key <= endUpdateMinute; key+=60) {
-            AmountSlot slot;
-            if (slots.containsKey(key)) {
-                slot = slots.get(key);
-            }else {
-                slot = new AmountSlot();
-                if (slots.containsKey(key-60)) {
-                    AmountSlot lastSlot = slots.get(key - 60);
-                    slot.pcAmount = lastSlot.pcAmount;
-                    slot.wirelessAmount = lastSlot.wirelessAmount;
-                }
-            }
+        for (long key = beginUpdateMinute; key <= baseEndMinute; key+=60) {
+            AmountSlot slot = slots.get(key);
             if(cacheSlots.containsKey(key)) {
                 AmountSlot cacheSlot = cacheSlots.get(key);
                 slot.tmAmount += cacheSlot.tmAmount;
@@ -113,7 +126,6 @@ public class WriteResultBolt implements IRichBolt {
             slots.put(key, slot);
         }
         cacheSlots.clear();
-        lastMinute = endUpdateMinute;
         endUpdateMinute = Long.MIN_VALUE;
         beginUpdateMinute = Long.MAX_VALUE;
     }

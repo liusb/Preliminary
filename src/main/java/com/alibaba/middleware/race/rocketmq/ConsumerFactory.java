@@ -16,7 +16,7 @@ public class ConsumerFactory {
     public static synchronized DefaultMQPushConsumer mkInstance(MessageListenerConcurrently listener)  throws Exception {
         if (consumer != null) {
             LOG.error("%%%%%%: Consumer Already Started.");
-            return null;
+            return consumer;
         }
 
         consumer = new DefaultMQPushConsumer(RaceConfig.MqConsumerGroup);
