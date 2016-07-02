@@ -44,13 +44,8 @@ public class TairOperatorImpl {
                 RaceConfig.TairGroup, RaceConfig.TairNamespace);
     }
 
-    private static double round(double value) {
-        long tmp = Math.round(value * 100);
-        return (double) tmp / 100;
-    }
-
-    public boolean write(Serializable key, double value) {
-        ResultCode rc = _tairManager.put(_namespace, key, round(value));
+    public boolean write(Serializable key, Serializable value) {
+        ResultCode rc = _tairManager.put(_namespace, key, value);
         if (rc.isSuccess()) {
             //LOG.info("%%%%%%: tair write:(" + key +", " + value + ") put success.");
             return true;
