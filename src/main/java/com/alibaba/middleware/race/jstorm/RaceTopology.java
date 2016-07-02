@@ -32,12 +32,12 @@ public class RaceTopology {
 //        Config.setNumAckers(conf, 0);
 
         TopologyBuilder builder = new TopologyBuilder();
-        builder.setSpout("message", new MessageSpout(), 3);
+        builder.setSpout("message", new MessageSpout(), 1);
 
         builder.setBolt("messageJoin", new MessageJoinBolt(), 4)
                 .fieldsGrouping("message", new Fields("orderId"));
 
-        builder.setBolt("aggregateBolt", new AggregateBolt(), 4)
+        builder.setBolt("aggregateBolt", new AggregateBolt(), 2)
                 .localFirstGrouping("messageJoin");
 
         builder.setBolt("writeBolt", new WriteResultBolt(), 1)
