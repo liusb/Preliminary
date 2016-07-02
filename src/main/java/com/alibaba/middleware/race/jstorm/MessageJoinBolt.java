@@ -63,7 +63,7 @@ public class MessageJoinBolt implements IRichBolt {
                         order.amount = order.amount - payment.amount;
                         orderCache.put(orderId, order);
                     } else {
-                        LOG.error("%%%%%%: order amount not equal to payment amount, order_id: " + orderId);
+                        LOG.error("%%%%%%: 1.order amount not equal to payment amount, order_id: " + orderId);
                     }
                 } else {
                     paymentCache.put(orderId, payment);
@@ -78,6 +78,8 @@ public class MessageJoinBolt implements IRichBolt {
                     if (order.amount > payment.amount) {
                         order.amount = order.amount - payment.amount;
                         orderCache.put(orderId, order);
+                    } else {
+                        LOG.error("%%%%%%: 2.order amount not equal to payment amount, order_id: " + orderId);
                     }
                 } else {
                     orderCache.put(orderId, order);
@@ -94,6 +96,7 @@ public class MessageJoinBolt implements IRichBolt {
 
     @Override
     public void cleanup() {
+        LOG.info("%%%%%% payment cleanup. order cache size: " + orderCache.size());
         for(Long key: paymentCache.keySet()) {
             LOG.info("%%%%%% payment Cache: " + key +"" + paymentCache.get(key).amount);
         }
