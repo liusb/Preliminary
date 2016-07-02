@@ -93,7 +93,11 @@ public class MessageJoinBolt implements IRichBolt {
     }
 
     @Override
-    public void cleanup() { }
+    public void cleanup() {
+        for(Long key: paymentCache.keySet()) {
+            LOG.info("%%%%%% payment Cache: " + key +"" + paymentCache.get(key).amount);
+        }
+    }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
