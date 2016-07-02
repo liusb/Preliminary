@@ -26,19 +26,19 @@ public class WriteResultBolt implements IRichBolt {
     protected transient HashMap<Long, AmountSlot> cacheSlots;
     protected transient long baseBeginMinute;
     protected transient long baseEndMinute;
-    protected transient long endUpdateMinute;
-    protected transient long beginUpdateMinute;
+    protected transient long updateBeginMinute;
+    protected transient long updateEndMinute;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
         tairClient = new TairOperatorImpl();
         slots = new HashMap<Long, AmountSlot>();
-        cacheSlots = new HashMap<Long, AmountSlot>();
         baseBeginMinute = Long.MAX_VALUE;
         baseEndMinute = Long.MIN_VALUE;
-        beginUpdateMinute = Long.MAX_VALUE;
-        endUpdateMinute = Long.MIN_VALUE;
+        cacheSlots = new HashMap<Long, AmountSlot>();
+        updateBeginMinute = Long.MAX_VALUE;
+        updateEndMinute = Long.MIN_VALUE;
     }
 
     @Override
@@ -51,11 +51,11 @@ public class WriteResultBolt implements IRichBolt {
                     amountSlot = cacheSlots.get(minute);
                 } else {
                     amountSlot = new AmountSlot();
-                    if (minute > endUpdateMinute) {
-                        endUpdateMinute = minute;
+                    if (minute > updateEndMinute) {
+                        updateEndMinute = minute;
                     }
-                    if (minute < beginUpdateMinute) {
-                        beginUpdateMinute = minute;
+                    if (minute < updateBeginMinute) {
+                        updateBeginMinute = minute;
                     }
                 }
                 amountSlot.tmAmount += tuple.getDouble(1);
@@ -91,25 +91,25 @@ public class WriteResultBolt implements IRichBolt {
             return;
         }
         if(baseBeginMinute <= baseEndMinute) {
-            if(beginUpdateMinute < baseBeginMinute) {
-                fillSlot(beginUpdateMinute, baseBeginMinute-60);
-                baseBeginMinute = beginUpdateMinute;
+            if(updateBeginMinute < baseBeginMinute) {
+                fillSlot(updateBeginMinute, baseBeginMinute-60);
+                baseBeginMinute = updateBeginMinute;
             }
-            if(endUpdateMinute > baseEndMinute) {
-                fillSlot(baseEndMinute + 60, endUpdateMinute);
-                baseEndMinute = endUpdateMinute;
+            if(updateEndMinute > baseEndMinute) {
+                fillSlot(baseEndMinute + 60, updateEndMinute);
+                baseEndMinute = updateEndMinute;
             }
         }else {
-            fillSlot(beginUpdateMinute, endUpdateMinute);
-            baseBeginMinute = beginUpdateMinute;
-            baseEndMinute = endUpdateMinute;
+            fillSlot(updateBeginMinute, updateEndMinute);
+            baseBeginMinute = updateBeginMinute;
+            baseEndMinute = updateEndMinute;
         }
         long pcAmount = 0;
         long wirelessAmount = 0;
-        if((endUpdateMinute-beginUpdateMinute) > 12*60*60) {
-            LOG.error("%%%%%%: " + beginUpdateMinute + " ====================> " + endUpdateMinute + " may have a bug.");
+        if((updateEndMinute - updateBeginMinute) > 12*60*60) {
+            LOG.error("%%%%%%: " + updateBeginMinute + " ====================> " + updateEndMinute + " may have a bug.");
         }
-        for (long key = beginUpdateMinute; key <= baseEndMinute; key+=60) {
+        for (long key = updateBeginMinute; key <= baseEndMinute; key+=60) {
             AmountSlot slot = slots.get(key);
             if(cacheSlots.containsKey(key)) {
                 AmountSlot cacheSlot = cacheSlots.get(key);
@@ -126,8 +126,8 @@ public class WriteResultBolt implements IRichBolt {
             slots.put(key, slot);
         }
         cacheSlots.clear();
-        endUpdateMinute = Long.MIN_VALUE;
-        beginUpdateMinute = Long.MAX_VALUE;
+        updateBeginMinute = Long.MAX_VALUE;
+        updateEndMinute = Long.MIN_VALUE;
     }
 
     private boolean isTickTuple(Tuple tuple) {
