@@ -47,16 +47,16 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
     public void nextTuple() {
         Values message = null;
         try {
-            //LOG.info("%%%%%%: Wait for message in next Tuple:");
+            //LOG.info("%%%%%%: Wait for message in next Tuple.");
             message = sendingQueue.take();
         } catch (InterruptedException e) {
             LOG.info("Failed to blocking the nextTuple.");
         }
         if (message != null) {
-            // LOG.info("%%%%%%: Take succeed :");
+            // LOG.info("%%%%%%: Take succeed.");
             collector.emit(message);
         }else {
-            LOG.info("%%%%%%: Take failed :");
+            LOG.info("%%%%%%: Take failed.");
         }
     }
 
@@ -66,7 +66,7 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
             for (MessageExt msg : msgList) {
                 byte [] body = msg.getBody();
                 if (body.length == 2 && body[0] == 0 && body[1] == 0) {
-                    LOG.info("%%%%%%: Got the end signal");
+                    LOG.info("%%%%%%: Got the end signal. topic: " + msg.getTopic());
                     continue;
                 }
                 if(msg.getTopic().equals(RaceConfig.MqPayTopic)) {
@@ -103,7 +103,7 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
                 sendingQueue.put(new Values(orderMessage.getOrderId(), orderMessage.getTotalPrice(), platform, 0L));
                 break;
             } catch (Exception e) {
-                LOG.info("Failed to blocking the putPayMessage.");
+                LOG.info("Failed to blocking the putOrderMessage.");
             }
         }
     }
