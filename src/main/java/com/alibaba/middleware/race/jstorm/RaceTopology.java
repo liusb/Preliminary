@@ -28,16 +28,16 @@ public class RaceTopology {
     public static void main(String[] args) throws Exception {
 
         Config conf = new Config();
-//        conf.put(Config.TOPOLOGY_WORKERS, 3);  // 三个worker
+        conf.put(Config.TOPOLOGY_WORKERS, 4);  // 三个worker
 //        Config.setNumAckers(conf, 0);
 
         TopologyBuilder builder = new TopologyBuilder();
-        builder.setSpout("message", new MessageSpout(), 1);
+        builder.setSpout("message", new MessageSpout(), 4);
 
         builder.setBolt("messageJoin", new MessageJoinBolt(), 4)
                 .fieldsGrouping("message", new Fields("orderId"));
 
-        builder.setBolt("aggregateBolt", new AggregateBolt(), 2)
+        builder.setBolt("aggregateBolt", new AggregateBolt(), 4)
                 .localFirstGrouping("messageJoin");
 
         builder.setBolt("writeBolt", new WriteResultBolt(), 1)
