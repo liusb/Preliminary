@@ -39,18 +39,20 @@ public class MessageJoinBolt implements IRichBolt {
         double amount;
         boolean platform;
         long minute;
+        Payment next;
         Payment(double amount, boolean platform, long minute) {
             this.amount = amount;
             this.platform = platform;
             this.minute = minute;
+            this.next = null;
         }
     }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
-        orderCache = new HashMap<Long, Order>(501000);
-        paymentCache = new HashMap<Long, Payment>(760000);
+        orderCache = new HashMap<Long, Order>();
+        paymentCache = new HashMap<Long, Payment>();
     }
 
     @Override
@@ -62,19 +64,9 @@ public class MessageJoinBolt implements IRichBolt {
                 long orderId = tuple.getLong(0);
                 Payment payment = new Payment(tuple.getDouble(1), tuple.getBoolean(2), tuple.getLong(3));
                 if (orderCache.containsKey(orderId)) {
-                    Order order = orderCache.get(orderId);
-                    processPayment(payment, order);
-//                    if (Math.abs(order.amount-payment.amount) < 0.0001) {
-//                        orderCache.remove(orderId);
-//                    } else if (order.amount > payment.amount) {
-//                        order.amount = order.amount - payment.amount;
-//                        orderCache.put(orderId, order);
-//                    } else {
-//                        LOG.error("%%%%%% 1: order amount :" + order.amount
-//                                + " less than payment amount: " + payment.amount);
-//                    }
+                    processPayment(orderId, payment);
                 } else {
-                    paymentCache.put(orderId, payment);
+                    putPayment(orderId, payment);
                 }
             } else {
                 order_count = order_count+1;
@@ -82,18 +74,7 @@ public class MessageJoinBolt implements IRichBolt {
                 long orderId = tuple.getLong(0);
                 Order order = new Order(tuple.getDouble(1), tuple.getBoolean(2));
                 if (paymentCache.containsKey(orderId)) {
-                    Payment payment = paymentCache.get(orderId);
-                    processPayment(payment, order);
-//                    if (Math.abs(order.amount - payment.amount) < 0.0001) {
-//                        paymentCache.remove(orderId);
-//                    }else if (order.amount > payment.amount) {
-//                        order.amount = order.amount - payment.amount;
-//                        orderCache.put(orderId, order);
-//                        paymentCache.remove(orderId);
-//                    } else {
-//                        LOG.error("%%%%%% 2: order amount :" + order.amount
-//                                + " less than payment amount: " + payment.amount);
-//                    }
+                    processOrder(orderId, order);
                 } else {
                     orderCache.put(orderId, order);
                 }
@@ -104,8 +85,45 @@ public class MessageJoinBolt implements IRichBolt {
         }
     }
 
-    void processPayment(Payment payment, Order order) {
+    private void putPayment(long orderId, Payment payment) {
+        if (paymentCache.containsKey(orderId)) {
+            Payment pre = paymentCache.get(orderId);
+            while (pre.next != null) {
+                pre = pre.next;
+            }
+            pre.next = payment;
+        }else {
+            paymentCache.put(orderId, payment);
+        }
+    }
+
+    void processPayment(long orderId, Payment payment) {
+        Order order = orderCache.get(orderId);
         collector.emit(new Values(payment.amount, payment.minute, payment.platform, order.platform));
+        if (Math.abs(order.amount-payment.amount) < 0.0001) {
+            orderCache.remove(orderId);
+        } else if (order.amount > payment.amount) {
+            order.amount = order.amount - payment.amount;
+            orderCache.put(orderId, order);
+        } else {
+            LOG.error("%%%%%%: order amount :" + order.amount + " less than payment amount: " + payment.amount);
+        }
+        join_out_count ++;
+    }
+
+    void processOrder(long orderId, Order order) {
+        Payment payment = paymentCache.get(orderId);
+        while (payment != null) {
+            collector.emit(new Values(payment.amount, payment.minute, payment.platform, order.platform));
+            order.amount = order.amount - payment.amount;
+            payment = payment.next;
+        }
+        if (order.amount > 0.0) {
+            orderCache.put(orderId, order);
+        } else if (order.amount < 0.0) {
+            LOG.error("%%%%%% : left order amount less than 0 :" + order.amount);
+        }
+        paymentCache.remove(orderId);
         join_out_count ++;
     }
 
