@@ -49,8 +49,8 @@ public class MessageJoinBolt implements IRichBolt {
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
-        orderCache = new HashMap<Long, Order>();
-        paymentCache = new HashMap<Long, Payment>();
+        orderCache = new HashMap<Long, Order>(501000);
+        paymentCache = new HashMap<Long, Payment>(760000);
     }
 
     @Override
@@ -64,15 +64,15 @@ public class MessageJoinBolt implements IRichBolt {
                 if (orderCache.containsKey(orderId)) {
                     Order order = orderCache.get(orderId);
                     processPayment(payment, order);
-                    if (Math.abs(order.amount-payment.amount) < 0.0001) {
-                        orderCache.remove(orderId);
-                    } else if (order.amount > payment.amount) {
-                        order.amount = order.amount - payment.amount;
-                        orderCache.put(orderId, order);
-                    } else {
-                        LOG.error("%%%%%% 1: order amount :" + order.amount
-                                + " less than payment amount: " + payment.amount);
-                    }
+//                    if (Math.abs(order.amount-payment.amount) < 0.0001) {
+//                        orderCache.remove(orderId);
+//                    } else if (order.amount > payment.amount) {
+//                        order.amount = order.amount - payment.amount;
+//                        orderCache.put(orderId, order);
+//                    } else {
+//                        LOG.error("%%%%%% 1: order amount :" + order.amount
+//                                + " less than payment amount: " + payment.amount);
+//                    }
                 } else {
                     paymentCache.put(orderId, payment);
                 }
@@ -84,16 +84,16 @@ public class MessageJoinBolt implements IRichBolt {
                 if (paymentCache.containsKey(orderId)) {
                     Payment payment = paymentCache.get(orderId);
                     processPayment(payment, order);
-                    if (Math.abs(order.amount - payment.amount) < 0.0001) {
-                        paymentCache.remove(orderId);
-                    }else if (order.amount > payment.amount) {
-                        order.amount = order.amount - payment.amount;
-                        orderCache.put(orderId, order);
-                        paymentCache.remove(orderId);
-                    } else {
-                        LOG.error("%%%%%% 2: order amount :" + order.amount
-                                + " less than payment amount: " + payment.amount);
-                    }
+//                    if (Math.abs(order.amount - payment.amount) < 0.0001) {
+//                        paymentCache.remove(orderId);
+//                    }else if (order.amount > payment.amount) {
+//                        order.amount = order.amount - payment.amount;
+//                        orderCache.put(orderId, order);
+//                        paymentCache.remove(orderId);
+//                    } else {
+//                        LOG.error("%%%%%% 2: order amount :" + order.amount
+//                                + " less than payment amount: " + payment.amount);
+//                    }
                 } else {
                     orderCache.put(orderId, order);
                 }
@@ -116,9 +116,9 @@ public class MessageJoinBolt implements IRichBolt {
         LOG.info("%%%%%% payment count:" + pay_count +", order count:: " + order_count);
         LOG.info("%%%%%% payment amount count:" + pay_amount_count +", order amount count:: " + order_amount_count);
         LOG.info("%%%%%% join out count:" + join_out_count);
-        for(Long key: paymentCache.keySet()) {
-            LOG.info("%%%%%% payment Cache: " + key +", " + paymentCache.get(key).amount);
-        }
+//        for(Long key: paymentCache.keySet()) {
+//            LOG.info("%%%%%% payment Cache: " + key +", " + paymentCache.get(key).amount);
+//        }
     }
 
     @Override
