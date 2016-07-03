@@ -84,11 +84,12 @@ public class MessageJoinBolt implements IRichBolt {
                 if (paymentCache.containsKey(orderId)) {
                     Payment payment = paymentCache.get(orderId);
                     processPayment(payment, order);
-                    paymentCache.remove(orderId);
-                    if (order.amount > payment.amount) {
+                    if (Math.abs(order.amount - payment.amount) < 0.0001) {
+                        paymentCache.remove(orderId);
+                    }else if (order.amount > payment.amount) {
                         order.amount = order.amount - payment.amount;
                         orderCache.put(orderId, order);
-                    } else if(order.amount < payment.amount) {
+                    } else {
                         LOG.error("%%%%%% 2: order amount :" + order.amount
                                 + " less than payment amount: " + payment.amount);
                     }
