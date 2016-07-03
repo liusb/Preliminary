@@ -46,8 +46,8 @@ public class MessageJoinBolt implements IRichBolt {
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
-        orderCache = new HashMap<Long, Order>();
-        paymentCache = new HashMap<Long, Payment>();
+        orderCache = new HashMap<Long, Order>(10000);
+        paymentCache = new HashMap<Long, Payment>(20000);
     }
 
     @Override
