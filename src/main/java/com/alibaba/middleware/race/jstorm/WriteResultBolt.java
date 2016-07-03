@@ -129,7 +129,7 @@ public class WriteResultBolt implements IRichBolt {
             slot.pcAmount += pcAmount;
             slot.wirelessAmount += wirelessAmount;
             tairClient.write(RaceConfig.prex_ratio + key,
-                    AmountSlot.round(slot.wirelessAmount) / AmountSlot.round(slot.pcAmount));
+                    AmountSlot.round(slot.wirelessAmount / slot.pcAmount);
             slots.put(key, slot);
         }
         cacheSlots.clear();
