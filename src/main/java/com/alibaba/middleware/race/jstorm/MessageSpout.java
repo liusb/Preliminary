@@ -31,6 +31,8 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
     protected transient LinkedBlockingDeque<Values> sendingQueue;
     private long pay_count = 0L;
     private long order_count = 0L;
+    private long ack_count = 0L;
+    private long fail_count = 0L;
 
     @Override
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
@@ -61,7 +63,7 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
             } else {
                 order_count = order_count+1;
             }
-            collector.emit(message);
+            collector.emit(message, pay_count+order_count);
         }else {
             LOG.info("%%%%%%: Take failed.");
         }
@@ -122,12 +124,12 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
 
     @Override
     public void ack(Object msgId) {
-        LOG.warn("%%%%%%: Shouldn't go this function");
+        ack_count ++;
     }
 
     @Override
     public void fail(Object msgId) {
-        LOG.warn("%%%%%%: Shouldn't go this function");
+        fail_count ++;
     }
 
     @Override
@@ -136,6 +138,7 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
             mqConsumer.shutdown();
         }
         LOG.info("%%%%%% payment count:" + pay_count +", order count:: " + order_count);
+        LOG.info("%%%%%% ack count:" + ack_count +", fail count:: " + fail_count);
     }
 
     @Override

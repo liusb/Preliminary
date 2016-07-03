@@ -91,6 +91,7 @@ public class MessageJoinBolt implements IRichBolt {
                     orderCache.put(orderId, order);
                 }
             }
+            collector.ack(tuple);
         }catch (Exception e) {
             LOG.error("Bolt execute failed " + e);
         }
