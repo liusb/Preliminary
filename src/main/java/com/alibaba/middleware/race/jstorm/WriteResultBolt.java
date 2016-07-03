@@ -28,6 +28,9 @@ public class WriteResultBolt implements IRichBolt {
     protected transient long baseEndMinute;
     protected transient long updateBeginMinute;
     protected transient long updateEndMinute;
+    private long in_count = 0L;
+    private double in_tm_amount_count = 0.0;
+    private double in_tb_amount_count = 0.0;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
@@ -63,6 +66,9 @@ public class WriteResultBolt implements IRichBolt {
                 amountSlot.pcAmount += tuple.getDouble(3);
                 amountSlot.wirelessAmount += tuple.getDouble(4);
                 cacheSlots.put(minute, amountSlot);
+                in_count++;
+                in_tm_amount_count += tuple.getDouble(1);
+                in_tb_amount_count += tuple.getDouble(2);
             } else {
                 writeCache();
             }
@@ -143,6 +149,9 @@ public class WriteResultBolt implements IRichBolt {
             LOG.info("writeResult minute: " + entry.getKey() + entry.getValue());
         }
         tairClient.close();
+        LOG.info("%%%%%% WriteResult in count:" + in_count);
+        LOG.info("%%%%%% WriteResult tm amount in count:" + in_tm_amount_count);
+        LOG.info("%%%%%% WriteResult tb amount in count:" + in_tb_amount_count);
     }
 
     @Override

@@ -22,6 +22,9 @@ public class MessageJoinBolt implements IRichBolt {
     protected transient HashMap<Long, Payment> paymentCache;
     private long pay_count = 0L;
     private long order_count = 0L;
+    private double pay_amount_count = 0.0;
+    private double order_amount_count = 0.0;
+    private long join_out_count = 0L;
 
     class Order {
         double amount;
@@ -55,6 +58,7 @@ public class MessageJoinBolt implements IRichBolt {
         try {
             if (tuple.getLong(3) != 0L) {
                 pay_count = pay_count+1;
+                pay_amount_count += tuple.getDouble(1);
                 long orderId = tuple.getLong(0);
                 Payment payment = new Payment(tuple.getDouble(1), tuple.getBoolean(2), tuple.getLong(3));
                 if (orderCache.containsKey(orderId)) {
@@ -74,6 +78,7 @@ public class MessageJoinBolt implements IRichBolt {
                 }
             } else {
                 order_count = order_count+1;
+                order_amount_count += tuple.getDouble(1);
                 long orderId = tuple.getLong(0);
                 Order order = new Order(tuple.getDouble(1), tuple.getBoolean(2));
                 if (paymentCache.containsKey(orderId)) {
@@ -99,13 +104,16 @@ public class MessageJoinBolt implements IRichBolt {
 
     void processPayment(Payment payment, Order order) {
         collector.emit(new Values(payment.amount, payment.minute, payment.platform, order.platform));
+        join_out_count ++;
     }
 
     @Override
     public void cleanup() {
-        LOG.info("%%%%%% payment cleanup. order cache size: " + orderCache.size());
-        LOG.info("%%%%%% payment cleanup. payment cache size: " + paymentCache.size());
+        LOG.info("%%%%%% cleanup. order cache size: " + orderCache.size());
+        LOG.info("%%%%%% cleanup. payment cache size: " + paymentCache.size());
         LOG.info("%%%%%% payment count:" + pay_count +", order count:: " + order_count);
+        LOG.info("%%%%%% payment amount count:" + pay_amount_count +", order amount count:: " + order_amount_count);
+        LOG.info("%%%%%% join out count:" + join_out_count);
         for(Long key: paymentCache.keySet()) {
             LOG.info("%%%%%% payment Cache: " + key +"" + paymentCache.get(key).amount);
         }

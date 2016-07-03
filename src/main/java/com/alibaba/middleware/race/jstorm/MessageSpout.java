@@ -31,6 +31,8 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
     protected transient LinkedBlockingDeque<Values> sendingQueue;
     private long pay_count = 0L;
     private long order_count = 0L;
+    private double pay_amount_count = 0.0;
+    private double order_amount_count = 0.0;
 //    private long ack_count = 0L;
 //    private long fail_count = 0L;
 
@@ -60,8 +62,10 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
             // LOG.info("%%%%%%: Take succeed.");
             if((((Long) message.get(3))) != 0L) {
                 pay_count = pay_count+1;
+                pay_amount_count += (Double)message.get(1);
             } else {
                 order_count = order_count+1;
+                order_amount_count += (Double)message.get(1);
             }
             collector.emit(message); //, pay_count+order_count);
         }else {
@@ -140,6 +144,7 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
             mqConsumer.shutdown();
         }
         LOG.info("%%%%%% payment count:" + pay_count +", order count:: " + order_count);
+        LOG.info("%%%%%% payment amount count:" + pay_amount_count +", order amount count:: " + order_amount_count);
 //        LOG.info("%%%%%% ack count:" + ack_count +", fail count:: " + fail_count);
     }
 
