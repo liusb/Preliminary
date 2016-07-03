@@ -46,8 +46,8 @@ public class MessageJoinBolt implements IRichBolt {
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
-        orderCache = new HashMap<Long, Order>(10000);
-        paymentCache = new HashMap<Long, Payment>(20000);
+        orderCache = new HashMap<Long, Order>();
+        paymentCache = new HashMap<Long, Payment>();
     }
 
     @Override
@@ -91,7 +91,7 @@ public class MessageJoinBolt implements IRichBolt {
                     orderCache.put(orderId, order);
                 }
             }
-            collector.ack(tuple);
+            // collector.ack(tuple);
         }catch (Exception e) {
             LOG.error("Bolt execute failed " + e);
         }
