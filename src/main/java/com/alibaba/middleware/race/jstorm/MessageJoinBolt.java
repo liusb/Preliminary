@@ -89,6 +89,7 @@ public class MessageJoinBolt implements IRichBolt {
                     }else if (order.amount > payment.amount) {
                         order.amount = order.amount - payment.amount;
                         orderCache.put(orderId, order);
+                        paymentCache.remove(orderId);
                     } else {
                         LOG.error("%%%%%% 2: order amount :" + order.amount
                                 + " less than payment amount: " + payment.amount);
@@ -99,7 +100,7 @@ public class MessageJoinBolt implements IRichBolt {
             }
             // collector.ack(tuple);
         }catch (Exception e) {
-            LOG.error("Bolt execute failed " + e);
+            LOG.error("%%%%%%: Bolt execute failed " + e);
         }
     }
 
@@ -116,7 +117,7 @@ public class MessageJoinBolt implements IRichBolt {
         LOG.info("%%%%%% payment amount count:" + pay_amount_count +", order amount count:: " + order_amount_count);
         LOG.info("%%%%%% join out count:" + join_out_count);
         for(Long key: paymentCache.keySet()) {
-            LOG.info("%%%%%% payment Cache: " + key +"" + paymentCache.get(key).amount);
+            LOG.info("%%%%%% payment Cache: " + key +", " + paymentCache.get(key).amount);
         }
     }
 

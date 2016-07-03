@@ -30,6 +30,7 @@ public class RaceTopology {
         Config conf = new Config();
         conf.put(Config.TOPOLOGY_WORKERS, 4);  // 三个worker
 //        Config.setNumAckers(conf, 0);
+        conf.put("topology.backpressure.enable", true);
 
         TopologyBuilder builder = new TopologyBuilder();
         builder.setSpout("message", new MessageSpout(), 4);
