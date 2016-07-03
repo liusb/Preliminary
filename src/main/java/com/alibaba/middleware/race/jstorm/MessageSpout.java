@@ -29,6 +29,8 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
     protected SpoutOutputCollector collector;
     protected transient DefaultMQPushConsumer mqConsumer;
     protected transient LinkedBlockingDeque<Values> sendingQueue;
+    private long pay_count = 0L;
+    private long order_count = 0L;
 
     @Override
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
@@ -54,6 +56,11 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
         }
         if (message != null) {
             // LOG.info("%%%%%%: Take succeed.");
+            if((((Long) message.get(3))) != 0L) {
+                pay_count = pay_count+1;
+            } else {
+                order_count = order_count+1;
+            }
             collector.emit(message);
         }else {
             LOG.info("%%%%%%: Take failed.");
@@ -128,6 +135,7 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
         if (mqConsumer != null) {
             mqConsumer.shutdown();
         }
+        LOG.info("%%%%%% payment count:" + pay_count +", order count:: " + order_count);
     }
 
     @Override

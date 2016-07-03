@@ -20,6 +20,8 @@ public class MessageJoinBolt implements IRichBolt {
     protected OutputCollector collector;
     protected transient HashMap<Long, Order> orderCache;
     protected transient HashMap<Long, Payment> paymentCache;
+    private long pay_count = 0L;
+    private long order_count = 0L;
 
     class Order {
         double amount;
@@ -52,6 +54,7 @@ public class MessageJoinBolt implements IRichBolt {
     public void execute(Tuple tuple) {
         try {
             if (tuple.getLong(3) != 0L) {
+                pay_count = pay_count+1;
                 long orderId = tuple.getLong(0);
                 Payment payment = new Payment(tuple.getDouble(1), tuple.getBoolean(2), tuple.getLong(3));
                 if (orderCache.containsKey(orderId)) {
@@ -70,6 +73,7 @@ public class MessageJoinBolt implements IRichBolt {
                     paymentCache.put(orderId, payment);
                 }
             } else {
+                order_count = order_count+1;
                 long orderId = tuple.getLong(0);
                 Order order = new Order(tuple.getDouble(1), tuple.getBoolean(2));
                 if (paymentCache.containsKey(orderId)) {
@@ -99,6 +103,8 @@ public class MessageJoinBolt implements IRichBolt {
     @Override
     public void cleanup() {
         LOG.info("%%%%%% payment cleanup. order cache size: " + orderCache.size());
+        LOG.info("%%%%%% payment cleanup. payment cache size: " + paymentCache.size());
+        LOG.info("%%%%%% payment count:" + pay_count +", order count:: " + order_count);
         for(Long key: paymentCache.keySet()) {
             LOG.info("%%%%%% payment Cache: " + key +"" + paymentCache.get(key).amount);
         }
