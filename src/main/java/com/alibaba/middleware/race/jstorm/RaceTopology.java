@@ -28,9 +28,9 @@ public class RaceTopology {
     public static void main(String[] args) throws Exception {
 
         Config conf = new Config();
-        conf.put(Config.TOPOLOGY_WORKERS, 4);  // 三个worker
+        conf.put(Config.TOPOLOGY_WORKERS, 4);
 //        Config.setNumAckers(conf, 0);
-        conf.put("topology.backpressure.enable", true);
+//        conf.put("topology.backpressure.enable", true);
 
         TopologyBuilder builder = new TopologyBuilder();
         builder.setSpout("message", new MessageSpout(), 4);
