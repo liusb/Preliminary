@@ -100,8 +100,7 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
         while (true) {
             try {
                 sendingQueue.put(new Values(paymentMessage.getOrderId(), paymentMessage.getPayAmount(),
-                        paymentMessage.getPayPlatform() == 0,
-                        RaceUtils.millisToSecondsOfMinute(paymentMessage.getCreateTime())));
+                        paymentMessage.getPayPlatform() == 0, paymentMessage.getCreateTime()));
                 break;
             } catch (Exception e) {
                 LOG.info("Failed to blocking the putPayMessage.");
@@ -123,7 +122,7 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("orderId", "amount", "platform", "minute"));
+        declarer.declare(new Fields("orderId", "amount", "platform", "createTime"));
     }
 
     @Override
