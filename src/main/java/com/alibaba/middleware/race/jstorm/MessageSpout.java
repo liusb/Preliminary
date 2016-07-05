@@ -20,6 +20,7 @@ import com.alibaba.rocketmq.common.message.MessageExt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -28,7 +29,7 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
     private static final Logger LOG = LoggerFactory.getLogger(MessageSpout.class);
     protected SpoutOutputCollector collector;
     protected transient DefaultMQPushConsumer mqConsumer;
-    protected transient LinkedBlockingDeque<Values> sendingQueue;
+    protected transient LinkedBlockingDeque<ArrayList<Values>> sendingQueue;
 //    private long pay_count = 0L;
 //    private long order_count = 0L;
 //    private double pay_amount_count = 0.0;
@@ -39,7 +40,7 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
     @Override
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
         this.collector = collector;
-        sendingQueue = new LinkedBlockingDeque<Values>(256);
+        sendingQueue = new LinkedBlockingDeque<ArrayList<Values>>(64);
         try {
             mqConsumer = ConsumerFactory.mkInstance(this);
         } catch (Exception e) {
@@ -51,14 +52,14 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
 
     @Override
     public void nextTuple() {
-        Values message = null;
+        ArrayList<Values> values = null;
         try {
             //LOG.info("%%%%%%: Wait for message in next Tuple.");
-            message = sendingQueue.take();
+            values = sendingQueue.take();
         } catch (InterruptedException e) {
             LOG.info("Failed to blocking the nextTuple.");
         }
-        if (message != null) {
+        if (values != null) {
             // LOG.info("%%%%%%: Take succeed.");
 //            if((((Long) message.get(3))) != 0L) {
 //                pay_count = pay_count+1;
@@ -67,7 +68,9 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
 //                order_count = order_count+1;
 //                order_amount_count += (Double)message.get(1);
 //            }
-            collector.emit(message); //, pay_count+order_count);
+            for(Values value: values) {
+                collector.emit(value); //, pay_count+order_count);
+            }
         }else {
             LOG.info("%%%%%%: Take failed.");
         }
@@ -76,18 +79,32 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
     @Override
     public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgList, ConsumeConcurrentlyContext context) {
         try {
-            for (MessageExt msg : msgList) {
-                byte [] body = msg.getBody();
-                if (body.length == 2 && body[0] == 0 && body[1] == 0) {
-                    LOG.info("%%%%%%: Got the end signal. topic: " + msg.getTopic());
-                    continue;
+            ArrayList<Values> values = new ArrayList<Values>(32);
+            String msgTopic = context.getMessageQueue().getTopic();
+            if(msgTopic.equals(RaceConfig.MqPayTopic)) {
+                for (MessageExt msg : msgList) {
+                    byte[] body = msg.getBody();
+                    if (body.length == 2 && body[0] == 0 && body[1] == 0) {
+                        LOG.info("%%%%%%: Got the end signal. topic: " + RaceConfig.MqPayTopic);
+                        continue;
+                    }
+                    PaymentMessage paymentMessage = RaceUtils.readKryoObject(PaymentMessage.class, body);
+                    values.add(new Values(paymentMessage.getOrderId(), paymentMessage.getPayAmount(),
+                            paymentMessage.getPayPlatform() == 0, paymentMessage.getCreateTime()));
                 }
-                if(msg.getTopic().equals(RaceConfig.MqPayTopic)) {
-                    putPayMessage(body);
-                }else {
-                    putOrderMessage(body, msg.getTopic().equals(RaceConfig.MqTmallTradeTopic));
+            } else {
+                boolean platform = msgTopic.equals(RaceConfig.MqTmallTradeTopic);
+                for (MessageExt msg : msgList) {
+                    byte[] body = msg.getBody();
+                    if (body.length == 2 && body[0] == 0 && body[1] == 0) {
+                        LOG.info("%%%%%%: Got the end signal. topic: " + msgTopic);
+                        continue;
+                    }
+                    OrderMessage orderMessage = RaceUtils.readKryoObject(OrderMessage.class, body);
+                    values.add(new Values(orderMessage.getOrderId(), orderMessage.getTotalPrice(), platform, 0L));
                 }
             }
+            putMessage(values);
             return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
         } catch (Exception e) {
             LOG.error("Failed to emit. ", e);
@@ -95,27 +112,13 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
         }
     }
 
-    public void putPayMessage(byte[] body) {
-        PaymentMessage paymentMessage = RaceUtils.readKryoObject(PaymentMessage.class, body);
+    public void putMessage(ArrayList<Values> values) {
         while (true) {
             try {
-                sendingQueue.put(new Values(paymentMessage.getOrderId(), paymentMessage.getPayAmount(),
-                        paymentMessage.getPayPlatform() == 0, paymentMessage.getCreateTime()));
+                sendingQueue.put(values);
                 break;
             } catch (Exception e) {
                 LOG.info("Failed to blocking the putPayMessage.");
-            }
-        }
-    }
-
-    public void putOrderMessage(byte[] body, boolean platform) {
-        OrderMessage orderMessage = RaceUtils.readKryoObject(OrderMessage.class, body);
-        while (true) {
-            try {
-                sendingQueue.put(new Values(orderMessage.getOrderId(), orderMessage.getTotalPrice(), platform, 0L));
-                break;
-            } catch (Exception e) {
-                LOG.info("Failed to blocking the putOrderMessage.");
             }
         }
     }
