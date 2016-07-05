@@ -79,7 +79,7 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
     @Override
     public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgList, ConsumeConcurrentlyContext context) {
         try {
-            ArrayList<Values> values = new ArrayList<Values>(32);
+            ArrayList<Values> values = new ArrayList<Values>(msgList.size());
             String msgTopic = context.getMessageQueue().getTopic();
             if(msgTopic.equals(RaceConfig.MqPayTopic)) {
                 for (MessageExt msg : msgList) {
