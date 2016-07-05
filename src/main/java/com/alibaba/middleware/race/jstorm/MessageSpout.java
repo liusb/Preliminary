@@ -39,7 +39,7 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
     @Override
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
         this.collector = collector;
-        sendingQueue = new LinkedBlockingDeque<Values>(30);
+        sendingQueue = new LinkedBlockingDeque<Values>(256);
         try {
             mqConsumer = ConsumerFactory.mkInstance(this);
         } catch (Exception e) {

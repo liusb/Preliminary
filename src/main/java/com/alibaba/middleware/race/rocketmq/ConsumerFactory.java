@@ -23,6 +23,7 @@ public class ConsumerFactory {
         consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);
 
         // consumer.setNamesrvAddr(RaceConfig.MqNamesrvAddr);
+        consumer.setConsumeMessageBatchMaxSize(32);
 
         consumer.subscribe(RaceConfig.MqPayTopic, "*");
         consumer.subscribe(RaceConfig.MqTaobaoTradeTopic, "*");
