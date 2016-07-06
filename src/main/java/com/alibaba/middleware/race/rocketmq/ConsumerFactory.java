@@ -25,7 +25,8 @@ public class ConsumerFactory {
 //        consumer.setNamesrvAddr(RaceConfig.MqNamesrvAddr);
         consumer.setConsumeMessageBatchMaxSize(1024);
         consumer.setPullBatchSize(1024);
-        consumer.setConsumeThreadMin(40);
+        consumer.setConsumeThreadMin(8);
+        consumer.setConsumeThreadMax(16);
 
         consumer.subscribe(RaceConfig.MqPayTopic, "*");
         consumer.subscribe(RaceConfig.MqTaobaoTradeTopic, "*");
