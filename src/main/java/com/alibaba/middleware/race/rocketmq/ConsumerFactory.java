@@ -22,8 +22,9 @@ public class ConsumerFactory {
         consumer = new DefaultMQPushConsumer(RaceConfig.MqConsumerGroup);
         consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);
 
-        // consumer.setNamesrvAddr(RaceConfig.MqNamesrvAddr);
-        consumer.setConsumeMessageBatchMaxSize(32);
+//        consumer.setNamesrvAddr(RaceConfig.MqNamesrvAddr);
+        consumer.setConsumeMessageBatchMaxSize(1024);
+        consumer.setPullBatchSize(1024);
 
         consumer.subscribe(RaceConfig.MqPayTopic, "*");
         consumer.subscribe(RaceConfig.MqTaobaoTradeTopic, "*");

@@ -40,7 +40,7 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
     @Override
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
         this.collector = collector;
-        sendingQueue = new LinkedBlockingDeque<ArrayList<Values>>(64);
+        sendingQueue = new LinkedBlockingDeque<ArrayList<Values>>();
         try {
             mqConsumer = ConsumerFactory.mkInstance(this);
         } catch (Exception e) {
@@ -79,7 +79,7 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
     @Override
     public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgList, ConsumeConcurrentlyContext context) {
         try {
-            ArrayList<Values> values = new ArrayList<Values>(msgList.size());
+            //ArrayList<Values> values = new ArrayList<Values>(msgList.size());
             String msgTopic = context.getMessageQueue().getTopic();
             if(msgTopic.equals(RaceConfig.MqPayTopic)) {
                 for (MessageExt msg : msgList) {
@@ -89,7 +89,7 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
                         continue;
                     }
                     PaymentMessage paymentMessage = RaceUtils.readKryoObject(PaymentMessage.class, body);
-                    values.add(new Values(paymentMessage.getOrderId(), paymentMessage.getPayAmount(),
+                    collector.emit(new Values(paymentMessage.getOrderId(), paymentMessage.getPayAmount(),
                             paymentMessage.getPayPlatform() == 0, paymentMessage.getCreateTime()));
                 }
             } else {
@@ -101,10 +101,10 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
                         continue;
                     }
                     OrderMessage orderMessage = RaceUtils.readKryoObject(OrderMessage.class, body);
-                    values.add(new Values(orderMessage.getOrderId(), orderMessage.getTotalPrice(), platform, 0L));
+                    collector.emit(new Values(orderMessage.getOrderId(), orderMessage.getTotalPrice(), platform, 0L));
                 }
             }
-            putMessage(values);
+            //putMessage(values);
             return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
         } catch (Exception e) {
             LOG.error("Failed to emit. ", e);
@@ -112,16 +112,16 @@ public class MessageSpout implements IRichSpout, MessageListenerConcurrently {
         }
     }
 
-    public void putMessage(ArrayList<Values> values) {
-        while (true) {
-            try {
-                sendingQueue.put(values);
-                break;
-            } catch (Exception e) {
-                LOG.info("Failed to blocking the putPayMessage.");
-            }
-        }
-    }
+//    public void putMessage(ArrayList<Values> values) {
+//        while (true) {
+//            try {
+//                sendingQueue.put(values);
+//                break;
+//            } catch (Exception e) {
+//                LOG.info("Failed to blocking the putPayMessage.");
+//            }
+//        }
+//    }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
