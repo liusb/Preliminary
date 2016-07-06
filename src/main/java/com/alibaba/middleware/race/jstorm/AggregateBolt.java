@@ -97,7 +97,7 @@ public class AggregateBolt implements IRichBolt {
     @Override
     public Map<String, Object> getComponentConfiguration() {
         Config conf = new Config();
-        conf.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, 3);
+        conf.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, 1);
         return conf;
     }
 }
