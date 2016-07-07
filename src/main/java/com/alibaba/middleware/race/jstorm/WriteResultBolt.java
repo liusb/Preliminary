@@ -48,12 +48,11 @@ public class WriteResultBolt implements IRichBolt {
     public void execute(Tuple tuple) {
         try {
             if(!isTickTuple(tuple)) {
-                AmountSlot amountSlot;
                 long minute = tuple.getLong(0);
-                if (cacheSlots.containsKey(minute)) {
-                    amountSlot = cacheSlots.get(minute);
-                } else {
+                AmountSlot amountSlot = cacheSlots.get(minute);
+                if (amountSlot == null) {
                     amountSlot = new AmountSlot();
+                    cacheSlots.put(minute, amountSlot);
                     if (minute > updateEndMinute) {
                         updateEndMinute = minute;
                     }
@@ -65,7 +64,6 @@ public class WriteResultBolt implements IRichBolt {
                 amountSlot.tbAmount += tuple.getDouble(2);
                 amountSlot.pcAmount += tuple.getDouble(3);
                 amountSlot.wirelessAmount += tuple.getDouble(4);
-                cacheSlots.put(minute, amountSlot);
 //                in_count++;
 //                in_tm_amount_count += tuple.getDouble(1);
 //                in_tb_amount_count += tuple.getDouble(2);
@@ -117,8 +115,8 @@ public class WriteResultBolt implements IRichBolt {
         }
         for (long key = updateBeginMinute; key <= baseEndMinute; key+=60) {
             AmountSlot slot = slots.get(key);
-            if(cacheSlots.containsKey(key)) {
-                AmountSlot cacheSlot = cacheSlots.get(key);
+            AmountSlot cacheSlot = cacheSlots.get(key);
+            if(cacheSlots != null) {
                 slot.tmAmount += cacheSlot.tmAmount;
                 slot.tbAmount += cacheSlot.tbAmount;
                 pcAmount += cacheSlot.pcAmount;
@@ -129,7 +127,6 @@ public class WriteResultBolt implements IRichBolt {
             slot.pcAmount += pcAmount;
             slot.wirelessAmount += wirelessAmount;
             tairClient.write(RaceConfig.prex_ratio + key, AmountSlot.round(slot.wirelessAmount/slot.pcAmount));
-            slots.put(key, slot);
         }
         cacheSlots.clear();
         updateBeginMinute = Long.MAX_VALUE;
