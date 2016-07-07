@@ -22,6 +22,8 @@ public class AggregateBolt implements IRichBolt {
 
     protected OutputCollector collector;
     protected transient HashMap<Long, AmountSlot> slots;
+    protected transient AmountSlot lastAmountSlot;
+    protected transient long lastMinute;
 //    private long in_count = 0L;
 //    private long out_count = 0L;
 //    private double in_amount_count = 0.0;
@@ -31,6 +33,8 @@ public class AggregateBolt implements IRichBolt {
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
         slots = new HashMap<Long, AmountSlot>();
+        lastAmountSlot = null;
+        lastMinute = Long.MIN_VALUE;
 //        out_amount_count = new AmountSlot();
     }
 
@@ -38,38 +42,42 @@ public class AggregateBolt implements IRichBolt {
     public void execute(Tuple tuple) {
         try {
             if(!isTickTuple(tuple)) {
-                AmountSlot amountSlot;
                 double amount = tuple.getDouble(0);
                 long minute = tuple.getLong(1);
-                if (slots.containsKey(minute)) {
-                    amountSlot = slots.get(minute);
-                } else {
-                    amountSlot = new AmountSlot();
+                if (lastMinute != minute) {
+                    lastMinute = minute;
+                    lastAmountSlot = slots.get(minute);
+                    if(lastAmountSlot == null) {
+                        lastAmountSlot = new AmountSlot();
+                        slots.put(minute, lastAmountSlot);
+                    }
                 }
                 if (tuple.getBoolean(2)) {
-                    amountSlot.pcAmount += amount;
+                    lastAmountSlot.pcAmount += amount;
                 } else {
-                    amountSlot.wirelessAmount += amount;
+                    lastAmountSlot.wirelessAmount += amount;
                 }
                 if (tuple.getBoolean(3)) {
-                    amountSlot.tmAmount += amount;
+                    lastAmountSlot.tmAmount += amount;
                 } else {
-                    amountSlot.tbAmount += amount;
+                    lastAmountSlot.tbAmount += amount;
                 }
-                slots.put(minute, amountSlot);
 //                in_count++;
 //                in_amount_count += amount;
             } else {
                 // LOG.info("%%%%%%: Got tick tuple with slot size: " + slots.size());
                 for (Map.Entry<Long, AmountSlot> slot: slots.entrySet()) {
-                    collector.emit(new Values(slot.getKey(), slot.getValue().tmAmount, slot.getValue().tbAmount,
-                            slot.getValue().pcAmount, slot.getValue().wirelessAmount));
+                    AmountSlot value = slot.getValue();
+                    collector.emit(new Values(slot.getKey(), value.tmAmount, value.tbAmount,
+                            value.pcAmount, value.wirelessAmount));
 //                    out_count++;
 //                    out_amount_count.tmAmount += slot.getValue().tmAmount;
 //                    out_amount_count.tbAmount += slot.getValue().tbAmount;
 //                    out_amount_count.pcAmount += slot.getValue().pcAmount;
 //                    out_amount_count.wirelessAmount += slot.getValue().wirelessAmount;
                 }
+                lastAmountSlot = null;
+                lastMinute = Long.MIN_VALUE;
                 slots.clear();
             }
         }catch (Exception e) {
