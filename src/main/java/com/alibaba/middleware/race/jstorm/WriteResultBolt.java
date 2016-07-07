@@ -115,12 +115,12 @@ public class WriteResultBolt implements IRichBolt {
         }
         for (long key = updateBeginMinute; key <= baseEndMinute; key+=60) {
             AmountSlot slot = slots.get(key);
-            AmountSlot cacheSlot = cacheSlots.get(key);
-            if(cacheSlots != null) {
-                slot.tmAmount += cacheSlot.tmAmount;
-                slot.tbAmount += cacheSlot.tbAmount;
-                pcAmount += cacheSlot.pcAmount;
-                wirelessAmount += cacheSlot.wirelessAmount;
+            AmountSlot amountSlot = cacheSlots.get(key);
+            if(amountSlot != null) {
+                slot.tmAmount += amountSlot.tmAmount;
+                slot.tbAmount += amountSlot.tbAmount;
+                pcAmount += amountSlot.pcAmount;
+                wirelessAmount += amountSlot.wirelessAmount;
                 tairClient.write(RaceConfig.prex_tmall + key, AmountSlot.round(slot.tmAmount));
                 tairClient.write(RaceConfig.prex_taobao + key, AmountSlot.round(slot.tbAmount));
             }
