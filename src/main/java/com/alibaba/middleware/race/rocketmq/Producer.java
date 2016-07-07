@@ -23,7 +23,7 @@ import java.util.concurrent.Semaphore;
 public class Producer {
 
     private static Random rand = new Random();
-    private static int count = 3000;
+    private static int count = 2000000;
 
     /**
      * 这是一个模拟堆积消息的程序，生成的消息模型和我们比赛的消息模型是一样的，
@@ -45,6 +45,9 @@ public class Producer {
         final String [] topics = new String[]{RaceConfig.MqTaobaoTradeTopic, RaceConfig.MqTmallTradeTopic};
         final Semaphore semaphore = new Semaphore(0);
 
+        if (args.length > 0) {
+            count = Integer.parseInt(args[0]);
+        }
         for (int i = 0; i < count; i++) {
             try {
                 final int platform = rand.nextInt(2);
@@ -114,8 +117,6 @@ public class Producer {
                 if (Double.compare(amount, orderMessage.getTotalPrice()) != 0) {
                     throw new RuntimeException("totalprice is not equal.");
                 }
-
-                Thread.sleep(100);
             } catch (Exception e) {
                 e.printStackTrace();
                 Thread.sleep(1000);
