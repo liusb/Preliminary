@@ -29,13 +29,12 @@ public class RaceTopology {
 
         Config conf = new Config();
         conf.put(Config.TOPOLOGY_WORKERS, 4);
-//        Config.setNumAckers(conf, 0);
-//        conf.put("topology.backpressure.enable", true);
+        conf.put(Config.TOPOLOGY_ACKER_EXECUTORS, 0);
 
         TopologyBuilder builder = new TopologyBuilder();
         builder.setSpout("message", new MessageSpout(), 4);
 
-        builder.setBolt("messageJoin", new MessageJoinBolt(), 4)
+        builder.setBolt("messageJoin", new MessageJoinBolt(), 6)
                 .fieldsGrouping("message", new Fields("orderId"));
 
         builder.setBolt("aggregateBolt", new AggregateBolt(), 4)
