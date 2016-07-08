@@ -34,7 +34,7 @@ public class RaceTopology {
         TopologyBuilder builder = new TopologyBuilder();
         builder.setSpout("message", new MessageSpout(), 4);
 
-        builder.setBolt("messageJoin", new MessageJoinBolt(), 8)
+        builder.setBolt("messageJoin", new MessageJoinBolt(), 6)
                 .fieldsGrouping("message", new Fields("orderId"));
 
         builder.setBolt("aggregateBolt", new AggregateBolt(), 4)
