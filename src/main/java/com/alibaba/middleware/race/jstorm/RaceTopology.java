@@ -30,6 +30,8 @@ public class RaceTopology {
         Config conf = new Config();
         conf.put(Config.TOPOLOGY_WORKERS, 4);
         conf.put(Config.TOPOLOGY_ACKER_EXECUTORS, 0);
+        conf.put("spout.delay.run", 6);
+        conf.put("topology.enable.metrics", false);
 
         TopologyBuilder builder = new TopologyBuilder();
         builder.setSpout("message", new MessageSpout(), 4);
